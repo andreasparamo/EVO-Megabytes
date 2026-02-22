@@ -2,10 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const BACKGROUND_URL = '/dojo background.jpg';
-
-const MUSIC_URL = 'https://codeskulptor-demos.commondatastorage.googleapis.com/GalaxyInvaders/theme_01.mp3';
-
 const WORDS = {
   beginner: ['cat','dog','sun','tree','book','code','star','bird','fish','wind','game','home','rock','ball','milk','blue','green','happy','quick','light','train','apple','bread','mouse','table','phone','water','smile','jump','rain','cloud','river','chair','plant','paper','piano','lemon','grape','quiet','sound','truck','road','house','clock','stone','sugar','butter','cable','castle','garden','blank','simple','bright','clean','cool','fresh','sweet','tiny','brave'],
   intermediate: ['jungle','rocket','puzzle','python','silver','laptop','winter','coffee','planet','thunder','network','battery','keyboard','monitor','quantum','dynamic','channel','gateway','compile','process','package','feature','digital','gravity','texture','control','cluster','balance','library','storage','service','latency','iterate','compute','backend','frontend','mutable','immutable','parallel','virtual','pointer','decimal','validate','optimize','fallback','tracking','partial','connect','resolve','context','adapter','decoder','encoder','handler','cursor','overlay','provider','schema'],
@@ -14,11 +10,9 @@ const WORDS = {
 
 const PRESETS = {
   beginner: { baseFall: 60, spawn: 1600, laneWidth: 160 },
-  intermediate: { baseFall: 60, spawn: 1300, laneWidth: 175 },
-  expert: { baseFall: 60, spawn: 1100, laneWidth: 195 }
+  intermediate: { baseFall: 85, spawn: 1300, laneWidth: 175 },
+  expert: { baseFall: 110, spawn: 1100, laneWidth: 195 }
 };
-
-const COLORS = ['#FF0055', '#00CC66', '#0099FF', '#FFCC00', '#9933FF', '#FF6600', '#00E5FF', '#FF3399'];
 
 const bags = { beginner: [], intermediate: [], expert: [] };
 
@@ -35,9 +29,10 @@ function nextWord(key) {
   return bags[key].pop();
 }
 
+
 function estimateWordWidth(text) {
-  const char = 10; 
-  const padding = 34; 
+  const char = 10; // px per char
+  const padding = 34; // pill padding/border
   return Math.min(420, Math.max(86, text.length * char + padding));
 }
 
@@ -53,7 +48,6 @@ export default function WordFallGame({ onBack }) {
   const [overlayContent, setOverlayContent] = useState(null);
   const [inputValue, setInputValue] = useState('');
   const [inputError, setInputError] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
 
   const gameRef = useRef(null);
   const typeboxRef = useRef(null);
@@ -63,47 +57,13 @@ export default function WordFallGame({ onBack }) {
   const startTimeRef = useRef(null);
   const lanesRef = useRef([]);
   const laneCountRef = useRef(0);
-  const audioRef = useRef(null);
-
-  useEffect(() => {
-    audioRef.current = new Audio(MUSIC_URL);
-    audioRef.current.loop = true;
-    audioRef.current.volume = 0.4; 
-    
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!audioRef.current) return;
-
-    if (running && !paused) {
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.log("Audio play blocked until interaction:", error);
-        });
-      }
-    } else {
-      audioRef.current.pause();
-    }
-  }, [running, paused]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = isMuted;
-    }
-  }, [isMuted]);
 
   const computeLanes = useCallback(() => {
     if (!gameRef.current) return;
     const width = gameRef.current.clientWidth;
     const laneWidth = PRESETS[difficulty].laneWidth;
 
+    // fewer lanes => more horizontal spacing => less overlap across lanes
     const extraGap = 70;
     const count = Math.max(3, Math.floor(width / (laneWidth + extraGap)));
 
@@ -122,6 +82,7 @@ export default function WordFallGame({ onBack }) {
     const alive = words.filter(w => (w.state ?? 'alive') === 'alive');
     const laneCandidates = lanesRef.current.map((_, i) => i);
 
+    // shuffle lanes
     for (let i = laneCandidates.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [laneCandidates[i], laneCandidates[j]] = [laneCandidates[j], laneCandidates[i]];
@@ -130,16 +91,19 @@ export default function WordFallGame({ onBack }) {
     const wWidth = estimateWordWidth(text);
     const newY = -50;
 
-    const minXGap = 50;
-    const minYGap = 130;
+    // minimum separation
+    const minXGap = 26;
+    const minYGap = 90;
 
     for (const lane of laneCandidates) {
       const xCenter = lanesRef.current[lane];
       const newX = Math.round(xCenter - wWidth / 2);
 
+      // keep fully on screen
       const maxX = gameRef.current.clientWidth - wWidth - 6;
       const clampedX = Math.max(6, Math.min(maxX, newX));
 
+      // check collision against existing words (2D)
       let ok = true;
       for (const other of alive) {
         const oWidth = other.w ?? estimateWordWidth(other.text);
@@ -163,25 +127,22 @@ export default function WordFallGame({ onBack }) {
 
   const spawnWord = useCallback(() => {
     const aliveCount = words.filter(w => (w.state ?? 'alive') === 'alive').length;
-    if (aliveCount >= 5) return;
+    if (aliveCount >= 3) return;
 
     const text = nextWord(difficulty);
     const slot = findSpawnSlot(text);
     if (!slot) return;
 
-    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-
     setWords(prev => {
       const newWord = {
         id: Date.now() + Math.random(),
         text,
-        color,
         lane: slot.lane,
         y: -50,
         speed: 0,
         x: slot.x,
         w: slot.w,
-        state: 'alive', 
+        state: 'alive', // alive | slicing
         sliceDir: Math.random() < 0.5 ? -1 : 1,
         slicedAt: 0
       };
@@ -204,15 +165,9 @@ export default function WordFallGame({ onBack }) {
   const gameOver = useCallback(() => {
     setRunning(false);
     setPaused(false);
-    
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-
     setOverlayContent({
       title: 'Game Over',
-      message: `Score ${score}`,
+      message: `Score ${score} · Level ${level}`,
       actions: [{
         label: 'Play Again',
         primary: true,
@@ -220,12 +175,14 @@ export default function WordFallGame({ onBack }) {
       }]
     });
     setOverlayVisible(true);
-  }, [score, level]); 
+  }, [score, level]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resolveOverlaps = useCallback((list) => {
+    // very light overlap resolver for max 3 words
     const alive = list.filter(w => (w.state ?? 'alive') === 'alive');
-    const minYGap = 120;
+    const minYGap = 78;
 
+    // sort by y (top->bottom)
     alive.sort((a, b) => a.y - b.y);
 
     for (let i = 0; i < alive.length; i++) {
@@ -239,8 +196,10 @@ export default function WordFallGame({ onBack }) {
         const dx = Math.abs((A.x + aw / 2) - (B.x + bw / 2));
         const dy = Math.abs(A.y - B.y);
 
-        const nearX = dx < (aw + bw) / 2 + 40;
+        // only separate if they are near each other horizontally (so it’s a real overlap)
+        const nearX = dx < (aw + bw) / 2 + 18;
         if (nearX && dy < minYGap) {
+          // push the higher one up a bit (clamp to keep on screen)
           const push = (minYGap - dy) / 2;
           A.y = Math.max(-60, A.y - push);
           B.y = B.y + push;
@@ -248,6 +207,7 @@ export default function WordFallGame({ onBack }) {
       }
     }
 
+    // write back changes
     const byId = new Map(alive.map(w => [w.id, w]));
     return list.map(w => (byId.has(w.id) ? { ...w, y: byId.get(w.id).y } : w));
   }, []);
@@ -263,10 +223,10 @@ export default function WordFallGame({ onBack }) {
           if ((w.state ?? 'alive') === 'slicing') return w;
 
           const base = PRESETS[difficulty].baseFall;
-          
           const elapsed = startTimeRef.current ? (performance.now() - startTimeRef.current) / 1000 : 0;
-          const timeMultiplier = 1 + (elapsed * 0.015);
-          const speed = (base * timeMultiplier) + (Math.random() * 10);
+          const timeFactor = 1 + Math.min(1.0, elapsed * 0.004);
+          const levelFactor = 1 + (level - 1) * 0.06;
+          const speed = (base + Math.random() * base * 0.25) * levelFactor * timeFactor;
 
           const newY = w.y + speed * dt;
 
@@ -295,7 +255,7 @@ export default function WordFallGame({ onBack }) {
     const cap = Math.max(900, baseSpawn - (level - 1) * 30);
 
     const aliveCount = words.filter(w => (w.state ?? 'alive') === 'alive').length;
-    if (lastSpawnRef.current >= cap && aliveCount < 5) {
+    if (lastSpawnRef.current >= cap && aliveCount < 3) {
       lastSpawnRef.current = 0;
       spawnWord();
     }
@@ -327,36 +287,10 @@ export default function WordFallGame({ onBack }) {
     lastTimeRef.current = null;
     setPaused(false);
     computeLanes();
-    
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-    }
 
     setTimeout(() => spawnWord(), 120);
     setTimeout(() => spawnWord(), 420);
   }, [computeLanes, spawnWord]);
-
-  const handleDifficultyChange = (e) => {
-    const newDifficulty = e.target.value;
-    setDifficulty(newDifficulty);
-    
-    setRunning(false);
-    setPaused(false);
-    setScore(0);
-    setLevel(1);
-    setLives(3);
-    setWords([]);
-    setOverlayVisible(false);
-    
-    startTimeRef.current = null;
-    lastSpawnRef.current = 0;
-    lastTimeRef.current = null;
-    
-    if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-    }
-  };
 
   const startGame = () => {
     if (!running) {
@@ -387,32 +321,6 @@ export default function WordFallGame({ onBack }) {
     reset();
     setRunning(true);
     setTimeout(() => typeboxRef.current && typeboxRef.current.focus(), 20);
-  };
-
-  const handleInputChange = (e) => {
-    const value = e.target.value;
-    setInputValue(value);
-
-    const trimmed = value.trim();
-    if (!trimmed) return;
-
-    let match = null;
-    let maxY = -Infinity;
-
-    words.forEach(w => {
-      if ((w.state ?? 'alive') !== 'alive') return;
-      if (w.text.toLowerCase() === trimmed.toLowerCase() && w.y > maxY) {
-        match = w;
-        maxY = w.y;
-      }
-    });
-
-    if (match) {
-      sliceWord(match.id);
-      setScore(s => s + 10);
-      setInputValue('');
-      setInputError(false);
-    }
   };
 
   const handleKeyDown = (e) => {
@@ -482,7 +390,7 @@ export default function WordFallGame({ onBack }) {
             id="difficulty"
             aria-label="Difficulty"
             value={difficulty}
-            onChange={handleDifficultyChange}
+            onChange={(e) => setDifficulty(e.target.value)}
           >
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
@@ -492,40 +400,35 @@ export default function WordFallGame({ onBack }) {
           <button onClick={startGame} className="primary">
             {!running ? 'Start' : paused ? 'Resume' : 'Pause'}
           </button>
-          
-          <button 
-            onClick={() => setIsMuted(!isMuted)} 
-            className="btn"
-            title={isMuted ? "Unmute Music" : "Mute Music"}
-            style={{ width: '40px', display: 'flex', justifyContent: 'center', padding: '0.55rem 0' }}
-          >
-            {isMuted ? '🔇' : '🔊'}
-          </button>
-
           <button onClick={restart}>Restart</button>
 
           <span className="pill">Score: <b>{score}</b></span>
+          <span className="pill">Level: <b>{level}</b></span>
           <span className="pill">Lives: <b>{lives}</b></span>
         </div>
       </div>
 
       <div className="kj-wrapper">
         <div className="kj-header">
+          <div className="kj-title">WordFall</div>
+
+          {/* removed extra text next to difficulty */}
           <div className="kj-meta">
+            <span>
+              Difficulty:{' '}
+              <strong>
+                {difficulty === 'beginner'
+                  ? 'Beginner'
+                  : difficulty === 'intermediate'
+                  ? 'Intermediate'
+                  : 'Expert'}
+              </strong>
+            </span>
           </div>
         </div>
 
         <section id="stage">
-          <div 
-            id="game" 
-            ref={gameRef}
-            style={{
-              backgroundImage: `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('${BACKGROUND_URL}')`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat'
-            }}
-          >
+          <div id="game" ref={gameRef}>
             {words.map(word => {
               const isSlicing = (word.state ?? 'alive') === 'slicing';
               return (
@@ -534,18 +437,13 @@ export default function WordFallGame({ onBack }) {
                   className={`word ${isSlicing ? 'slicing' : ''}`}
                   style={{
                     transform: `translate(${word.x}px, ${word.y}px)`,
-                    position: 'absolute',
-                    '--word-color': word.color,
-                    color: '#fff',
-                    border: `2px solid ${word.color}`,
-                    background: `${word.color}33`,
-                    boxShadow: `0 0 15px ${word.color}66`
+                    position: 'absolute'
                   }}
                 >
                   {isSlicing ? (
                     <>
-                      <span className="half left" aria-hidden="true" style={{background: `${word.color}33`}}>{word.text}</span>
-                      <span className="half right" aria-hidden="true" style={{background: `${word.color}33`}}>{word.text}</span>
+                      <span className="half left" aria-hidden="true">{word.text}</span>
+                      <span className="half right" aria-hidden="true">{word.text}</span>
                       <span className="slash" aria-hidden="true" />
                       <span className="sr-only">{word.text}</span>
                     </>
@@ -584,6 +482,7 @@ export default function WordFallGame({ onBack }) {
           </div>
 
           <div className="footer">
+            {/* removed bottom text */}
             <div />
             <input
               ref={typeboxRef}
@@ -593,7 +492,7 @@ export default function WordFallGame({ onBack }) {
               autoComplete="off"
               spellCheck="false"
               value={inputValue}
-              onChange={handleInputChange}
+              onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               className={inputError ? 'input-bad' : ''}
             />
