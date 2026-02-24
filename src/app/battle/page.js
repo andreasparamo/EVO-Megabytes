@@ -88,7 +88,7 @@ export default function BattlePage() {
                 color: "var(--text-primary)",
               }}
             >
-              Match Found! 🎮
+              Match Found!
             </h2>
             <p
               style={{
