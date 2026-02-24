@@ -5,9 +5,10 @@ import './games.css';
 
 import WordFallGame from './waterFall';
 import KeyboardJumpGame from './keyBoardJump';
+import NinjaRaceGame from './ninjaRace'; // Added import for Ninja Race
 
 export default function GamesPage() {
-  const [currentView, setCurrentView] = useState('games'); // 'games' | 'wordfall' | 'keyboardjump'
+  const [currentView, setCurrentView] = useState('games'); // 'games' | 'wordfall' | 'keyboardjump' | 'ninjarace'
 
   // MAIN GAMES SELECT PAGE ---------------------------------------------
   if (currentView === 'games') {
@@ -47,6 +48,19 @@ export default function GamesPage() {
                 </button>
               </div>
             </article>
+
+            {/* Ninja Race card */}
+            <article className="card">
+              <div className="thumb">NINJA RACE</div>
+              <h3>Ninja Race</h3>
+              <p>Race against 2 AI ninjas by typing words accurately. 3 difficulty modes.</p>
+              <div className="row">
+                <span className="muted">Typing • Racing</span>
+                <button className="btn primary" onClick={() => setCurrentView('ninjarace')}>
+                  Play
+                </button>
+              </div>
+            </article>
           </div>
         </section>
       </main>
@@ -67,6 +81,15 @@ export default function GamesPage() {
     return (
       <main>
         <KeyboardJumpGame onBack={() => setCurrentView('games')} />
+      </main>
+    );
+  }
+
+  // NINJA RACE VIEW ----------------------------------------------------
+  if (currentView === 'ninjarace') {
+    return (
+      <main>
+        <NinjaRaceGame onBack={() => setCurrentView('games')} />
       </main>
     );
   }
