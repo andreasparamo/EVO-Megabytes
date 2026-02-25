@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./tests.module.css";
 import ResultsModal from "@/src/components/ResultsModal";
+import { useAuth } from "@/context/AuthContext";
+import { saveTestResult } from "@/lib/progressService";
 
 // Deterministic seed helpers (same on server and client)
 function hashString(str) {
@@ -44,6 +46,7 @@ const MODES = {
 };
 
 export default function TestsPage() {
+  const { user } = useAuth();
   const [mode, setMode] = useState("Short");
 
   // Seed is deterministic for SSR hydration; we vary it later on user actions.
@@ -57,6 +60,7 @@ export default function TestsPage() {
   const [endedAt, setEndedAt] = useState(null);
   const [showResults, setShowResults] = useState(false);
   const [wpmHistory, setWpmHistory] = useState([]);
+  const [isNewBest, setIsNewBest] = useState(false);
 
   const inputRef = useRef(null);
   const containerRef = useRef(null);
@@ -196,8 +200,42 @@ export default function TestsPage() {
         setIndex(index + 1);
       } else {
         // End of test
-        setEndedAt(Date.now());
+        const endTime = Date.now();
+        setEndedAt(endTime);
         setShowResults(true);
+
+        // Save result to Firestore for progress tracking
+        if (user && startedAt) {
+          const elapsedMs = endTime - startedAt;
+          const elapsedMin = Math.max(elapsedMs / 60000, 1 / 60);
+
+          let correctChars = 0;
+          let totalChars = 0;
+          for (let wi = 0; wi < words.length; wi++) {
+            const typed = inputs[wi] ?? "";
+            const word = words[wi];
+            const minLen = Math.min(word.length, typed.length);
+            for (let ci = 0; ci < minLen; ci++) {
+              if (typed[ci] === word[ci]) correctChars++;
+            }
+            totalChars += word.length;
+          }
+          const spaces = words.length;
+          const finalWpm = Math.max(0, Math.round(((correctChars + spaces) / 5) / elapsedMin));
+          const finalAcc = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+
+          saveTestResult(user.uid, {
+            wpm: finalWpm,
+            accuracy: finalAcc,
+            wordCount: words.length,
+            testCompleted: true,
+          }).then((outcome) => {
+            if (outcome.saved && outcome.isNewBest) {
+              setIsNewBest(true);
+              console.log("New personal best!");
+            }
+          });
+        }
       }
       return;
     }
@@ -237,6 +275,7 @@ export default function TestsPage() {
     setEndedAt(null);
     setShowResults(false);
     setWpmHistory([]);
+    setIsNewBest(false);
     requestAnimationFrame(() => focusInput());
   }
 
@@ -341,6 +380,7 @@ export default function TestsPage() {
           stats={stats}
           mode={mode}
           wpmHistory={wpmHistory}
+          isNewBest={isNewBest}
         />
       </section>
     </main>

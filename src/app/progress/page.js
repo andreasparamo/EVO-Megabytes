@@ -1,77 +1,52 @@
 "use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import ProgressDashboard from "@/src/components/progress/ProgressDashboard";
+import ProgressSkeleton from "@/src/components/progress/ProgressSkeleton";
+import { fetchProgress } from "@/lib/progressService";
 import "../globals.css";
 
-export default function Dashboard() {
-  const analyticsData = [
-    {
-      title: "Average WPM",
-      value: "68",
-      subtitle: "Words per minute",
-      trend: "+12% from last week",
-    },
-    {
-      title: "Accuracy",
-      value: "94%",
-      subtitle: "Average accuracy",
-      trend: "+3% from last week",
-    },
-    {
-      title: "Tests Completed",
-      value: "127",
-      subtitle: "Total tests",
-      trend: "+15 this week",
-    },
-    {
-      title: "Time Practiced",
-      value: "24h",
-      subtitle: "Total practice time",
-      trend: "+5h this week",
-    },
-    {
-      title: "Best WPM",
-      value: "89",
-      subtitle: "Personal record",
-      trend: "Set 2 days ago",
-    },
-    {
-      title: "Current Streak",
-      value: "7",
-      subtitle: "Days in a row",
-      trend: "Keep it up!",
-    },
-    {
-      title: "Lessons Completed",
-      value: "42",
-      subtitle: "Out of 60 lessons",
-      trend: "70% complete",
-    },
-    {
-      title: "Global Rank",
-      value: "#1,234",
-      subtitle: "Among all users",
-      trend: "+56 positions",
+export default function ProgressPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [progress, setProgress] = useState(null);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push("/"); // redirect unauthenticated users to login
+      return;
     }
-  ];
 
-  return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h1>Your Typing Analytics</h1>
-        <p>Track your progress and improve your typing skills</p>
-      </div>
+    async function load() {
+      try {
+        const prog = await fetchProgress(user.uid);
+        setProgress(prog);
+      } catch (err) {
+        setError("Failed to load progress. Please try again.");
+        console.error(err);
+      } finally {
+        setDataLoading(false);
+      }
+    }
 
-      <div className="analytics-grid">
-        {analyticsData.map((item, index) => (
-          <div key={index} className="analytics-tile">
-            <div className="tile-content">
-              <h3 className="tile-title">{item.title}</h3>
-              <div className="tile-value">{item.value}</div>
-              <p className="tile-subtitle">{item.subtitle}</p>
-              <p className="tile-trend">{item.trend}</p>
-            </div>
-          </div>
-        ))}
+    load();
+  }, [user, authLoading, router]);
+
+  if (authLoading || dataLoading) return <ProgressSkeleton />;
+
+  if (error) {
+    return (
+      <div className="progress-container">
+        <p className="progress-error">{error}</p>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return <ProgressDashboard progress={progress} />;
 }
