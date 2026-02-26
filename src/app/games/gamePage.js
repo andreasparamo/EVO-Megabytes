@@ -53,7 +53,7 @@ export default function GamesPage() {
             <article className="card">
               <div className="thumb">NINJA RACE</div>
               <h3>Ninja Race</h3>
-              <p>Race against 2 AI ninjas by typing words accurately. 3 difficulty modes.</p>
+              <p>Race against 3 AI ninjas by typing words accurately. 3 difficulty modes.</p>
               <div className="row">
                 <span className="muted">Typing • Racing</span>
                 <button className="btn primary" onClick={() => setCurrentView('ninjarace')}>
