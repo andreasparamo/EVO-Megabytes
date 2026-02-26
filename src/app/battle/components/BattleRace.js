@@ -1,8 +1,16 @@
 "use client";
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { listenToMatchUpdates, updatePlayerProgress, markPlayerFinished } from '@/lib/battleMatchmaking';
-import OpponentProgress from './OpponentProgress';
-import styles from './BattleRace.module.css';
+import { useState, useEffect, useRef, useMemo } from "react";
+import {
+  listenToMatchUpdates,
+  updatePlayerProgress,
+  markPlayerFinished,
+} from "@/lib/battleMatchmaking";
+import OpponentProgress from "./OpponentProgress";
+import styles from "./BattleRace.module.css";
+import KeyboardLayout, {
+  normalizeKeyChar,
+} from "@/src/components/KeyboardLayout"; // keyboard UI + key normalizer helper
+import "@/src/components/KeyboardLayout.css"; // base styles for kb-wrap, kb-row, kb-key classes
 
 export default function BattleRace({ matchId, userId, onFinish }) {
   const [matchData, setMatchData] = useState(null);
@@ -10,10 +18,14 @@ export default function BattleRace({ matchId, userId, onFinish }) {
   const [correctChars, setCorrectChars] = useState(0);
   const [wrongChars, setWrongChars] = useState(0);
   const [startedAt, setStartedAt] = useState(null);
+  const [activeKeys, setActiveKeys] = useState(new Set()); // tracks which key is highlighted as "next to press"
+  const [keyFlash, setKeyFlash] = useState({ key: null, type: null }); // drives the green/red flash on each keypress
   const inputRef = useRef(null);
 
-  const snippet = matchData?.gameState?.snippet?.code || '';
-  const opponentId = Object.keys(matchData?.players || {}).find(id => id !== userId);
+  const snippet = matchData?.gameState?.snippet?.code || "";
+  const opponentId = Object.keys(matchData?.players || {}).find(
+    (id) => id !== userId,
+  );
   const opponentData = opponentId ? matchData?.players[opponentId] : null;
 
   // Listen to match updates
@@ -35,10 +47,11 @@ export default function BattleRace({ matchId, userId, onFinish }) {
     if (!startedAt) return { wpm: 0, accuracy: 100, progress: 0 };
 
     const minutes = (Date.now() - startedAt) / 60000;
-    const wpm = Math.round((correctChars / 5) / minutes) || 0;
+    const wpm = Math.round(correctChars / 5 / minutes) || 0;
     const total = correctChars + wrongChars;
     const accuracy = total > 0 ? Math.round((correctChars / total) * 100) : 100;
-    const progress = snippet.length > 0 ? (currentIndex / snippet.length) * 100 : 0;
+    const progress =
+      snippet.length > 0 ? (currentIndex / snippet.length) * 100 : 0;
 
     return { wpm, accuracy, progress };
   }, [correctChars, wrongChars, startedAt, currentIndex, snippet.length]);
@@ -51,18 +64,31 @@ export default function BattleRace({ matchId, userId, onFinish }) {
       updatePlayerProgress(matchId, userId, {
         progress: stats.progress,
         wpm: stats.wpm,
-        accuracy: stats.accuracy
+        accuracy: stats.accuracy,
       });
     }, 200);
 
     return () => clearInterval(interval);
   }, [matchId, userId, stats, startedAt]);
 
+  // Highlight the next key to press whenever currentIndex or snippet changes
+  useEffect(() => {
+    const nextChar = snippet[currentIndex]; // the character the player needs to type next
+    if (!nextChar) return; // nothing to highlight at the end of the snippet
+    setActiveKeys(new Set([normalizeKeyChar(nextChar)])); // normalize (e.g. uppercase → lowercase) then highlight
+  }, [currentIndex, snippet]);
+
   // Handle typing
   const handleKeyDown = (e) => {
     const key = e.key;
 
-    if (!startedAt && key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (
+      !startedAt &&
+      key.length === 1 &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey
+    ) {
       setStartedAt(Date.now());
     }
 
@@ -70,10 +96,15 @@ export default function BattleRace({ matchId, userId, onFinish }) {
       e.preventDefault();
       const expected = snippet[currentIndex];
       if (key === expected) {
-        setCorrectChars(prev => prev + 1);
+        setCorrectChars((prev) => prev + 1);
       } else {
-        setWrongChars(prev => prev + 1);
+        setWrongChars((prev) => prev + 1);
       }
+
+      // Flash the expected key green (correct) or red (wrong) for 150 ms
+      const norm = normalizeKeyChar(expected); // normalize the expected char to match keyboard key ids
+      setKeyFlash({ key: norm, type: key === expected ? "correct" : "wrong" }); // trigger the flash colour
+      setTimeout(() => setKeyFlash({ key: null, type: null }), 150); // clear flash after 150 ms
 
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
@@ -84,9 +115,9 @@ export default function BattleRace({ matchId, userId, onFinish }) {
       }
     }
 
-    if (key === 'Backspace' && currentIndex > 0) {
+    if (key === "Backspace" && currentIndex > 0) {
       e.preventDefault();
-      setCurrentIndex(prev => prev - 1);
+      setCurrentIndex((prev) => prev - 1);
     }
   };
 
@@ -124,7 +155,7 @@ export default function BattleRace({ matchId, userId, onFinish }) {
 
       <div className={styles.codeContainer}>
         <pre className={styles.code}>
-          {snippet.split('').map((char, i) => {
+          {snippet.split("").map((char, i) => {
             const isTyped = i < currentIndex;
             const isCursor = i === currentIndex;
 
@@ -132,7 +163,11 @@ export default function BattleRace({ matchId, userId, onFinish }) {
             if (isTyped) className += ` ${styles.typed}`;
             if (isCursor) className += ` ${styles.cursor}`;
 
-            return <span key={i} className={className}>{char}</span>;
+            return (
+              <span key={i} className={className}>
+                {char}
+              </span>
+            );
           })}
         </pre>
       </div>
@@ -143,6 +178,13 @@ export default function BattleRace({ matchId, userId, onFinish }) {
         className={styles.hiddenInput}
         spellCheck={false}
         autoComplete="off"
+      />
+
+      {/* Keyboard layout — shows the full keyboard, highlights the next key, flashes on correct/wrong */}
+      <KeyboardLayout
+        activeKeys={activeKeys} // the key to glow (next char to type)
+        keyFlash={keyFlash} // { key, type } drives the green/red flash
+        lessonChars={null} // null = render all keys; pass a Set to filter to snippet chars only
       />
 
       <p className={styles.hint}>Click anywhere to focus and start typing!</p>
