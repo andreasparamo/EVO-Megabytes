@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import styles from "./RaceResults.module.css";
 import { saveBattleResult } from "@/lib/firestoreService";
+import { cleanupMatch } from "@/lib/battleMatchmaking";
 
 export default function RaceResults({
   matchData,
@@ -17,8 +18,12 @@ export default function RaceResults({
   );
   const opponentStats = opponentId ? matchData?.players[opponentId] : null;
 
-  // Save battle result to Firestore when results are displayed
+  // Cleanup queue/match entries and save result when results are displayed
   useEffect(() => {
+    if (matchData?.matchId && userId) {
+      cleanupMatch(matchData.matchId, userId);
+    }
+
     const saveResult = async () => {
       if (matchData && userId) {
         const battleData = {

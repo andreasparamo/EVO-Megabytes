@@ -44,6 +44,11 @@
   color: #4CAF50;
 }
 
+.wrong {
+  color: #f44336;
+  text-decoration: underline;
+}
+
 .cursor {
   background-color: rgba(100, 150, 255, 0.3);
 }
@@ -59,4 +64,16 @@
   margin-top: 15px;
   color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+.waitingBanner {
+  text-align: center;
+  margin-top: 20px;
+  padding: 12px 20px;
+  background-color: var(--card-bg);
+  border: 1px solid #4CAF50;
+  border-radius: 8px;
+  color: #4CAF50;
+  font-size: 1rem;
+  font-weight: 500;
 }

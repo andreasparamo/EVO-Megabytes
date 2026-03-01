@@ -18,6 +18,8 @@ export default function BattleRace({ matchId, userId, onFinish }) {
   const [correctChars, setCorrectChars] = useState(0);
   const [wrongChars, setWrongChars] = useState(0);
   const [startedAt, setStartedAt] = useState(null);
+  const [myFinished, setMyFinished] = useState(false); // true once the current player completes the snippet
+  const [charResults, setCharResults] = useState([]); // true = correct, false = wrong, per typed character
   const [activeKeys, setActiveKeys] = useState(new Set()); // tracks which key is highlighted as "next to press"
   const [keyFlash, setKeyFlash] = useState({ key: null, type: null }); // drives the green/red flash on each keypress
   const inputRef = useRef(null);
@@ -34,7 +36,11 @@ export default function BattleRace({ matchId, userId, onFinish }) {
 
     const unsubscribe = listenToMatchUpdates(matchId, (data) => {
       setMatchData(data);
-      if (data.gameState.winner && data.gameState.winner !== userId) {
+      // Only go to results once every player has finished typing
+      const allFinished =
+        data.players &&
+        Object.values(data.players).every((p) => p.finished);
+      if (allFinished) {
         setTimeout(() => onFinish(data), 1000);
       }
     });
@@ -95,29 +101,34 @@ export default function BattleRace({ matchId, userId, onFinish }) {
     if (key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       const expected = snippet[currentIndex];
-      if (key === expected) {
+      const isCorrect = key === expected;
+
+      if (isCorrect) {
         setCorrectChars((prev) => prev + 1);
       } else {
         setWrongChars((prev) => prev + 1);
       }
 
+      setCharResults((prev) => [...prev, isCorrect]);
+
       // Flash the expected key green (correct) or red (wrong) for 150 ms
-      const norm = normalizeKeyChar(expected); // normalize the expected char to match keyboard key ids
-      setKeyFlash({ key: norm, type: key === expected ? "correct" : "wrong" }); // trigger the flash colour
-      setTimeout(() => setKeyFlash({ key: null, type: null }), 150); // clear flash after 150 ms
+      const norm = normalizeKeyChar(expected);
+      setKeyFlash({ key: norm, type: isCorrect ? "correct" : "wrong" });
+      setTimeout(() => setKeyFlash({ key: null, type: null }), 150);
 
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
 
       if (nextIndex >= snippet.length) {
         markPlayerFinished(matchId, userId);
-        setTimeout(() => onFinish(matchData), 1000);
+        setMyFinished(true); // show "waiting for opponent" — listener handles redirect when both are done
       }
     }
 
     if (key === "Backspace" && currentIndex > 0) {
       e.preventDefault();
       setCurrentIndex((prev) => prev - 1);
+      setCharResults((prev) => prev.slice(0, -1));
     }
   };
 
@@ -160,7 +171,11 @@ export default function BattleRace({ matchId, userId, onFinish }) {
             const isCursor = i === currentIndex;
 
             let className = styles.char;
-            if (isTyped) className += ` ${styles.typed}`;
+            if (isTyped) {
+              className += charResults[i]
+                ? ` ${styles.typed}`
+                : ` ${styles.wrong}`;
+            }
             if (isCursor) className += ` ${styles.cursor}`;
 
             return (
@@ -187,7 +202,15 @@ export default function BattleRace({ matchId, userId, onFinish }) {
         lessonChars={null} // null = render all keys; pass a Set to filter to snippet chars only
       />
 
-      <p className={styles.hint}>Click anywhere to focus and start typing!</p>
+      {myFinished && (
+        <div className={styles.waitingBanner}>
+          You finished! Waiting for opponent to complete...
+        </div>
+      )}
+
+      {!myFinished && (
+        <p className={styles.hint}>Click anywhere to focus and start typing!</p>
+      )}
     </div>
   );
 }
