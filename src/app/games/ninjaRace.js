@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-const MUSIC_URL = 'https://codeskulptor-demos.commondatastorage.googleapis.com/descent/background%20music.mp3';
+const BACKGROUND_URL = '/track.png'; 
+const MUSIC_URL = 'https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/race1.ogg';
+const USER_IMAGE_URL = '/running_ninja.jpg';
+const BOT_IMAGE_URL = '/running_demon.jpg';
 
 const difficultyConfigs = {
   beginner: { timeLimit: 75, minAccuracy: 70, botBaseWpm: 25 },
@@ -13,7 +16,7 @@ const difficultyConfigs = {
 const MAX_QUOTE_LEN = 250;
 
 export default function NinjaRaceGame({ onBack }) {
-  const [gameState, setGameState] = useState('menu'); // menu, countdown, playing, paused, summary
+  const [gameState, setGameState] = useState('menu'); 
   const [difficulty, setDifficulty] = useState('beginner');
   const [customWpm, setCustomWpm] = useState(50);
   const [quote, setQuote] = useState('');
@@ -25,6 +28,7 @@ export default function NinjaRaceGame({ onBack }) {
 
   const [stats, setStats] = useState({ wpm: 0, accuracy: 0, score: 0, status: '', won: false });
   const [bots, setBots] = useState({ b1: 0, b2: 0, b3: 0 });
+  const [botMultipliers, setBotMultipliers] = useState({ b1: 0.9, b2: 1.0, b3: 1.1 });
   const [noTransition, setNoTransition] = useState(true);
 
   const audioRef = useRef(null);
@@ -45,10 +49,20 @@ export default function NinjaRaceGame({ onBack }) {
 
   useEffect(() => {
     audioRef.current = new Audio(MUSIC_URL);
-    audioRef.current.loop = true;
+    audioRef.current.loop = true; 
     audioRef.current.volume = 0.3;
-    return () => audioRef.current?.pause();
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
   }, []);
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.muted = localMuted;
+  }, [localMuted]);
 
   useEffect(() => {
     if (gameState === 'playing' && inputRef.current) {
@@ -109,15 +123,15 @@ export default function NinjaRaceGame({ onBack }) {
           };
 
           return {
-            b1: moveBot(prev.b1, 0.9), 
-            b2: moveBot(prev.b2, 1.0), 
-            b3: moveBot(prev.b3, 1.1)  
+            b1: moveBot(prev.b1, botMultipliers.b1), 
+            b2: moveBot(prev.b2, botMultipliers.b2), 
+            b3: moveBot(prev.b3, botMultipliers.b3)  
           };
         });
       }, 100);
     }
     return () => clearInterval(interval);
-  }, [gameState, quote, difficulty, customWpm]);
+  }, [gameState, quote, difficulty, customWpm, botMultipliers]);
 
   const startCountdown = async () => {
     setNoTransition(true);
@@ -126,6 +140,12 @@ export default function NinjaRaceGame({ onBack }) {
     typedLenRef.current = 0;
     setBots({ b1: 0, b2: 0, b3: 0 });
     
+    setBotMultipliers({
+      b1: 0.75 + Math.random() * 0.5, 
+      b2: 0.75 + Math.random() * 0.5,
+      b3: 0.75 + Math.random() * 0.5
+    });
+
     setGameState('countdown');
     setCount(3);
     const q = nextQuoteRef.current || await fetchQuote();
@@ -139,7 +159,9 @@ export default function NinjaRaceGame({ onBack }) {
     setGameState('playing');
     
     setTimeout(() => setNoTransition(false), 50);
-    if (audioRef.current && !localMuted) audioRef.current.play().catch(() => {});
+    if (audioRef.current) {
+        audioRef.current.play().catch(() => {});
+    }
     
     fetchQuote().then(q => nextQuoteRef.current = q);
   };
@@ -156,10 +178,17 @@ export default function NinjaRaceGame({ onBack }) {
     setGameState('playing');
     const timePaused = Date.now() - pauseTimeRef.current;
     startTimeRef.current += timePaused; 
-    if (audioRef.current && !localMuted) audioRef.current.play().catch(() => {});
+    if (audioRef.current) {
+        audioRef.current.play().catch(() => {});
+    }
   };
 
-  const handleRestart = () => {
+  const handleRestart = (overrideDiff = null) => {
+    const activeDiff = overrideDiff || difficulty;
+    const config = activeDiff === 'custom' 
+      ? { timeLimit: 60, minAccuracy: 80, botBaseWpm: customWpm } 
+      : difficultyConfigs[activeDiff];
+
     setNoTransition(true); 
     setGameState('menu');
     setUserInput('');
@@ -167,8 +196,11 @@ export default function NinjaRaceGame({ onBack }) {
     setQuote('');
     typedLenRef.current = 0;
     setBots({ b1: 0, b2: 0, b3: 0 });
-    setTimeLeft(getCurrentConfig().timeLimit);
-    if (audioRef.current) audioRef.current.pause();
+    setTimeLeft(config.timeLimit);
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+    }
   };
 
   const handleInput = (e) => {
@@ -213,9 +245,9 @@ export default function NinjaRaceGame({ onBack }) {
     };
 
     let beatingBots = [];
-    if (calcBotProg(1.1) >= 100) beatingBots.push("Bot 3"); 
-    if (calcBotProg(1.0) >= 100) beatingBots.push("Bot 2"); 
-    if (calcBotProg(0.9) >= 100) beatingBots.push("Bot 1"); 
+    if (calcBotProg(botMultipliers.b3) >= 100) beatingBots.push("Bot 3"); 
+    if (calcBotProg(botMultipliers.b2) >= 100) beatingBots.push("Bot 2"); 
+    if (calcBotProg(botMultipliers.b1) >= 100) beatingBots.push("Bot 1"); 
 
     let place = beatingBots.length + 1;
 
@@ -258,12 +290,15 @@ export default function NinjaRaceGame({ onBack }) {
   const racerTransition = noTransition ? 'none' : 'left 0.1s linear';
 
   return (
-    <section id="ninjaRacePage" style={{ color: '#fff', background: '#0a0a0a', minHeight: '100vh', padding: '1rem', position: 'relative' }}>
+    <section id="ninjaRacePage" style={{ 
+        color: '#fff', 
+        minHeight: '100vh', 
+        padding: '1rem', 
+        position: 'relative'
+    }}>
       
-      {/* Header */}
       <div className="nav-container" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         
-        {/* Back Button & Game Title Container */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button className="btn" onClick={onBack}>← Back</button>
           <span style={{ fontSize: '1.1rem', fontWeight: '500' }}>Ninja Race</span>
@@ -282,7 +317,7 @@ export default function NinjaRaceGame({ onBack }) {
           
           <button 
             className="btn" 
-            onClick={handleRestart}
+            onClick={() => handleRestart()}
             disabled={gameState === 'menu'}
             style={{ opacity: gameState !== 'menu' ? 1 : 0.4, cursor: gameState !== 'menu' ? 'pointer' : 'not-allowed' }}
           >
@@ -297,10 +332,8 @@ export default function NinjaRaceGame({ onBack }) {
               onChange={(e) => {
                 const newDiff = e.target.value;
                 setDifficulty(newDiff);
-                setTimeLeft(newDiff === 'custom' ? 60 : difficultyConfigs[newDiff].timeLimit);
-                if (gameState !== 'menu') handleRestart();
+                handleRestart(newDiff); 
               }} 
-              disabled={gameState !== 'menu' && gameState !== 'summary'}
               style={{ background: 'transparent', color: '#fff', border: 'none', outline: 'none', cursor: 'pointer' }}
             >
               <option value="beginner">Beginner</option>
@@ -318,10 +351,10 @@ export default function NinjaRaceGame({ onBack }) {
                   max="150" 
                   value={customWpm} 
                   onChange={(e) => {
-                    setCustomWpm(Number(e.target.value));
-                    if (gameState !== 'menu' && gameState !== 'summary') handleRestart();
+                    const newWpm = Number(e.target.value);
+                    setCustomWpm(newWpm);
+                    handleRestart('custom'); 
                   }}
-                  disabled={gameState !== 'menu' && gameState !== 'summary'}
                   style={{ width: '80px', cursor: 'pointer' }}
                 />
               </div>
@@ -332,37 +365,66 @@ export default function NinjaRaceGame({ onBack }) {
         </div>
       </div>
 
-      <div className="race-arena" style={{ position: 'relative', background: '#111', padding: '20px', borderRadius: '8px' }}>
-        {/* Lanes */}
+      <div className="race-arena" style={{ 
+          position: 'relative', 
+          padding: '20px', 
+          borderRadius: '8px',
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('${BACKGROUND_URL}')`,
+          backgroundSize: '100% 100%',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          minHeight: '280px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
         {[bots.b1, bots.b2, userProgress, bots.b3].map((prog, i) => (
-          <div key={i} className="nr-lane" style={{ 
-            height: '50px', borderBottom: '1px solid #333', position: 'relative', display: 'flex', alignItems: 'center'
+          <div key={i} className={`nr-lane ${i < 3 ? 'border-bottom' : ''}`} style={{ 
+            height: '60px', position: 'relative', display: 'flex', alignItems: 'center',
+            borderBottom: i < 3 ? '1px solid rgba(255, 255, 255, 0.08)' : 'none'
           }}>
             <div style={{ 
               position: 'absolute', left: `${prog}%`, transition: racerTransition, transform: 'translateX(-100%)',
-              background: i === 2 ? '#4ade80' : '#3b82f6', padding: '4px 12px', borderRadius: '4px',
-              fontSize: '0.8rem', fontWeight: 'bold', whiteSpace: 'nowrap', zIndex: 2
+              display: 'flex', alignItems: 'center', gap: '8px', zIndex: 2
             }}>
-              {i === 2 ? 'YOU' : `BOT ${i > 2 ? i : i + 1}`}
+              <div style={{
+                background: i === 2 ? '#4ade80' : '#4f46e5',
+                padding: '4px 10px', borderRadius: '4px',
+                fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap',
+                color: i === 2 ? '#000' : '#fff',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+              }}>
+                {i === 2 ? 'YOU' : `BOT ${i > 2 ? i : i + 1}`}
+              </div>
+              <img 
+                src={i === 2 ? USER_IMAGE_URL : BOT_IMAGE_URL} 
+                alt={i === 2 ? 'User Racer' : 'Bot Racer'}
+                style={{
+                  width: '38px', height: '38px', borderRadius: '50%',
+                  objectFit: 'cover', border: `2px solid ${i === 2 ? '#4ade80' : '#4f46e5'}`,
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.3)', background: '#111',
+                  transform: i !== 2 ? 'scaleX(-1)' : 'none'
+                }}
+              />
             </div>
           </div>
         ))}
         <div className="finish-line" style={{ 
-          position: 'absolute', right: '0', top: 0, bottom: 0, width: '4px', background: 'repeating-linear-gradient(0deg, #fff, #fff 10px, #000 10px, #000 20px)' 
+          position: 'absolute', right: '10px', top: 0, bottom: 0, width: '4px', background: 'repeating-linear-gradient(0deg, #fff, #fff 10px, #000 10px, #000 20px)', zIndex: 1 
         }} />
       </div>
 
-      {/* Typing Area */}
-      <div className="typing-container" style={{ marginTop: '2rem', textAlign: 'center' }}>
+      <div className="typing-container" style={{ marginTop: '2rem', textAlign: 'center', position: 'relative' }}>
         {gameState === 'menu' && <button className="btn primary" onClick={startCountdown} style={{ fontSize: '1.5rem', marginTop: '2rem' }}>START RACE</button>}
         
-        {gameState === 'countdown' && <h1 style={{ fontSize: '4rem' }}>{count}</h1>}
+        {gameState === 'countdown' && <h1 style={{ fontSize: '4rem', textShadow: '0 0 20px rgba(0,0,0,0.5)' }}>{count}</h1>}
 
         {(gameState === 'playing' || gameState === 'paused') && (
           <>
-            <div className="quote-display" style={{ fontSize: '1.25rem', lineHeight: '1.6', marginBottom: '1rem', textAlign: 'left', background: '#1a1a1a', padding: '20px', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
+            <div className="quote-display" style={{ fontSize: '1.25rem', lineHeight: '1.6', marginBottom: '1rem', textAlign: 'left', background: '#0b0b0b', padding: '20px', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
               {quote.split('').map((char, i) => {
-                let color = '#666';
+                let color = '#888';
                 let background = 'transparent';
                 let textDecoration = 'none';
 
@@ -374,7 +436,7 @@ export default function NinjaRaceGame({ onBack }) {
                     background = 'rgba(239, 68, 68, 0.2)'; 
                   } else {
                     textDecoration = 'underline';
-                    background = '#333';
+                    background = '#444';
                   }
                 }
 
@@ -397,23 +459,22 @@ export default function NinjaRaceGame({ onBack }) {
           </>
         )}
 
-        {/* Overlays */}
         {gameState === 'paused' && (
-          <div className="paused-overlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div className="paused-overlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: '12px' }}>
             <h2>Game Paused</h2>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               <button className="btn primary" onClick={handleResume} style={{ fontSize: '1.2rem' }}>Resume</button>
-              <button className="btn" onClick={handleRestart} style={{ fontSize: '1.2rem' }}>Restart</button>
+              <button className="btn" onClick={() => handleRestart()} style={{ fontSize: '1.2rem' }}>Restart</button>
             </div>
           </div>
         )}
 
         {gameState === 'summary' && (
-          <div className="summary-overlay" style={{ background: 'rgba(0,0,0,0.9)', padding: '2rem', borderRadius: '12px' }}>
+          <div className="summary-overlay" style={{ background: 'rgba(0,0,0,0.9)', padding: '2rem', borderRadius: '12px', border: '1px solid #444', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10, width: '80%' }}>
             <h2 style={{ color: stats.won ? '#4ade80' : '#ef4444' }}>{stats.status}</h2>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '3rem', margin: '2rem 0' }}>
-              <div><p>Speed</p><h3>{stats.wpm} WPM</h3></div>
-              <div><p>Accuracy</p><h3>{stats.accuracy}%</h3></div>
+              <div><p style={{ color: '#aaa' }}>Speed</p><h3>{stats.wpm} WPM</h3></div>
+              <div><p style={{ color: '#aaa' }}>Accuracy</p><h3>{stats.accuracy}%</h3></div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <button className="btn primary" onClick={startCountdown}>Play Again</button>
