@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useRef } from "react";
 import WpmChart from "@/src/components/WpmChart";
+import Confetti from "@/src/components/Confetti";
 import useThemeColors from "@/src/hooks/useThemeColors";
 
-export default function ResultsModal({ isOpen, onClose, onRestart, stats, mode, wpmHistory }) {
+export default function ResultsModal({ isOpen, onClose, onRestart, stats, mode, wpmHistory, isNewBest }) {
   // Use refs to keep callback references stable
   const onCloseRef = useRef(onClose);
   const onRestartRef = useRef(onRestart);
-  
+
   useEffect(() => {
     onCloseRef.current = onClose;
     onRestartRef.current = onRestart;
@@ -32,13 +33,13 @@ export default function ResultsModal({ isOpen, onClose, onRestart, stats, mode, 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div 
-        className="modal-content" 
+      <div
+        className="modal-content"
         onClick={(e) => e.stopPropagation()}
-        style={{ 
-          maxWidth: "none", 
-          width: "100%", 
-          height: "100%", 
+        style={{
+          maxWidth: "none",
+          width: "100%",
+          height: "100%",
           borderRadius: "0",
           border: "none",
           display: "flex",
@@ -48,13 +49,29 @@ export default function ResultsModal({ isOpen, onClose, onRestart, stats, mode, 
         }}
       >
         {/* Header with title and compact stats */}
-        <div style={{ 
-          display: "flex", 
+        <div style={{
+          display: "flex",
           flexDirection: "column",
           alignItems: "center",
           marginBottom: "1.5rem",
           flexShrink: 0
         }}>
+          {isNewBest && (
+            <div style={{
+              background: `linear-gradient(135deg, ${colors.accent1}, ${colors.accent2 || colors.accent1})`,
+              color: "#fff",
+              padding: "0.35rem 1.25rem",
+              borderRadius: "999px",
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              marginBottom: "0.5rem",
+              animation: "pbPulse 1.5s ease-in-out infinite",
+            }}>
+              New PB!
+            </div>
+          )}
           <h2 style={{ margin: "0 0 1rem 0", fontSize: "1.5rem", color: colors.text }}>Test Complete</h2>
           <div style={{ display: "flex", gap: "3rem" }}>
             <div style={{ textAlign: "center" }}>
@@ -73,7 +90,7 @@ export default function ResultsModal({ isOpen, onClose, onRestart, stats, mode, 
         </div>
 
         {/* Graph Area - takes remaining space */}
-        <div 
+        <div
           style={{
             flex: 1,
             width: "100%",
@@ -86,16 +103,16 @@ export default function ResultsModal({ isOpen, onClose, onRestart, stats, mode, 
             padding: "1rem"
           }}
         >
-          <WpmChart 
-            data={wpmHistory || []} 
-            finalWpm={stats.wpm} 
-            finalAcc={stats.acc} 
+          <WpmChart
+            data={wpmHistory || []}
+            finalWpm={stats.wpm}
+            finalAcc={stats.acc}
           />
         </div>
 
         {/* Actions at the bottom */}
-        <div style={{ 
-          display: "flex", 
+        <div style={{
+          display: "flex",
           flexDirection: "column",
           alignItems: "center",
           marginTop: "1.5rem",
@@ -114,6 +131,15 @@ export default function ResultsModal({ isOpen, onClose, onRestart, stats, mode, 
           </span>
         </div>
       </div>
+      {/* Confetti overlay */}
+      <Confetti active={isOpen && isNewBest} />
+
+      <style>{`
+        @keyframes pbPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.08); opacity: 0.9; }
+        }
+      `}</style>
     </div>
   );
 }
