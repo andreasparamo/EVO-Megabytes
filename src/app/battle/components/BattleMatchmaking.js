@@ -1,97 +1,145 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { joinQueue, leaveQueue, listenMatch, createMatch } from '@/lib/battleMatchmaking';
-import styles from './BattleMatchmaking.module.css';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { createLobby, joinLobby, listenToLobbies } from "@/lib/battleMatchmaking";
+import styles from "./BattleMatchmaking.module.css";
 
-export default function BattleMatchmaking({ onMatchFound }) {
+export default function BattleMatchmaking({ onLobbyJoined }) {
   const { user } = useAuth();
-  const [state, setState] = useState('idle'); // idle, searching, matched
-  const [matchData, setMatchData] = useState(null);
+  const [tab, setTab] = useState("create"); // "create" | "join"
+  const [language, setLanguage] = useState("c");
+  const [difficulty, setDifficulty] = useState("medium");
+  const [creating, setCreating] = useState(false);
+  const [lobbies, setLobbies] = useState([]);
+  const [joiningId, setJoiningId] = useState(null);
 
   useEffect(() => {
-    if (state === 'searching' && user) {
-      const displayName = user.displayName || user.email || 'Anonymous';
+    if (tab !== "join") return;
+    const unsub = listenToLobbies(setLobbies);
+    return () => unsub();
+  }, [tab]);
 
-      // Join the matchmaking queue
-      joinQueue(user.uid, displayName);
-
-      // Listen for match notification
-      const unsubscribe = listenMatch(user.uid, (match) => {
-        if (match) {
-          console.log('Match found:', match);
-          setMatchData(match);
-          setState('matched');
-
-          // Notify parent component
-          if (onMatchFound) {
-            onMatchFound(match);
-          }
-        }
-      });
-
-      // Try to create match every 2 seconds
-      const matchInterval = setInterval(() => {
-        createMatch({ userId: user.uid, displayName });
-      }, 2000);
-
-      // Cleanup: leave queue on unmount or state change
-      return () => {
-        if (unsubscribe) unsubscribe();
-        clearInterval(matchInterval);
-        leaveQueue(user.uid);
-      };
+  async function handleCreate() {
+    if (!user) return;
+    setCreating(true);
+    const displayName = user.displayName || user.email || "Anonymous";
+    const result = await createLobby(user.uid, displayName, language, difficulty);
+    setCreating(false);
+    if (result.success) {
+      onLobbyJoined(result.lobbyId, true);
     }
-  }, [state, user, onMatchFound]);
-
-  const handleFindOpponent = () => {
-    setState('searching');
-  };
-
-  const handleCancel = () => {
-    setState('idle');
-    leaveQueue(user.uid);
-  };
-
-  if (state === 'matched') {
-    return (
-      <div className={styles.container}>
-        <h2 className={styles.title}>Match Found! 🎮</h2>
-        <p className={styles.subtitle}>
-          Opponent: <strong>{matchData?.opponentName}</strong>
-        </p>
-        <div className={styles.loadingContainer}>
-          <div className={styles.spinner}></div>
-          <p className={styles.loadingText}>Preparing race...</p>
-        </div>
-      </div>
-    );
   }
 
-  if (state === 'searching') {
-    return (
-      <div className={styles.container}>
-        <h2 className={styles.title}>Finding Opponent...</h2>
-        <div className={styles.loadingContainer}>
-          <div className={styles.spinner}></div>
-          <p className={styles.loadingText}>Searching for players...</p>
-        </div>
-        <button onClick={handleCancel} className={styles.cancelButton}>
-          Cancel
-        </button>
-      </div>
-    );
+  async function handleJoin(lobbyId) {
+    if (!user) return;
+    setJoiningId(lobbyId);
+    const displayName = user.displayName || user.email || "Anonymous";
+    const result = await joinLobby(lobbyId, user.uid, displayName);
+    setJoiningId(null);
+    if (result.success) {
+      onLobbyJoined(lobbyId, false);
+    }
   }
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}>Ready to Battle?</h2>
-      <p className={styles.subtitle}>
-        Compete against other players in real-time typing races
-      </p>
-      <button onClick={handleFindOpponent} className={styles.findButton}>
-        Find Opponent
-      </button>
+      <h2 className={styles.title}>Battle Arena</h2>
+
+      <div className={styles.tabs}>
+        <button
+          className={`${styles.tab} ${tab === "create" ? styles.activeTab : ""}`}
+          onClick={() => setTab("create")}
+        >
+          Create Battle
+        </button>
+        <button
+          className={`${styles.tab} ${tab === "join" ? styles.activeTab : ""}`}
+          onClick={() => setTab("join")}
+        >
+          Join Battle
+        </button>
+      </div>
+
+      {tab === "create" && (
+        <div>
+          <p className={styles.subtitle}>
+            Pick a language and difficulty — a code snippet will be generated for both players.
+          </p>
+          <div className={styles.selectors}>
+            <div className={styles.selectorGroup}>
+              <label className={styles.selectorLabel}>Language</label>
+              <select
+                className={styles.select}
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                <option value="c">C</option>
+                <option value="cpp">C++</option>
+                <option value="csharp">C#</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+                <option value="sql">SQL</option>
+              </select>
+            </div>
+            <div className={styles.selectorGroup}>
+              <label className={styles.selectorLabel}>Difficulty</label>
+              <select
+                className={styles.select}
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </div>
+          <button
+            onClick={handleCreate}
+            disabled={creating}
+            className={styles.findButton}
+          >
+            {creating ? "Generating snippet..." : "Create Battle"}
+          </button>
+        </div>
+      )}
+
+      {tab === "join" && (
+        <div>
+          <p className={styles.subtitle}>Join an open battle room.</p>
+          {lobbies.length === 0 ? (
+            <p className={styles.noLobbies}>No open battles. Create one!</p>
+          ) : (
+            <div className={styles.lobbyList}>
+              {lobbies.map((lobby) => (
+                <div key={lobby.lobbyId} className={styles.lobbyCard}>
+                  <div className={styles.lobbyInfo}>
+                    <span className={styles.lobbyCreator}>{lobby.creatorName}</span>
+                    <span className={styles.lobbyMeta}>
+                      {lobby.language.toUpperCase()} · {lobby.difficulty}
+                    </span>
+                  </div>
+                  <button
+                    className={styles.joinButton}
+                    disabled={joiningId === lobby.lobbyId || lobby.creatorId === user?.uid}
+                    onClick={() => handleJoin(lobby.lobbyId)}
+                  >
+                    {joiningId === lobby.lobbyId
+                      ? "Joining..."
+                      : lobby.creatorId === user?.uid
+                      ? "Your Room"
+                      : "Join"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

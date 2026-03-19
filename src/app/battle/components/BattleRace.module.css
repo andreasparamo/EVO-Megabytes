@@ -66,6 +66,66 @@
   font-size: 0.9rem;
 }
 
+.forfeitButton {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 24px;
+  font-size: 0.9rem;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.forfeitButton:hover {
+  border-color: #f44336;
+  color: #f44336;
+}
+
+.forfeitConfirm {
+  margin-top: 16px;
+  padding: 16px 20px;
+  background-color: var(--card-bg);
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.forfeitConfirm p {
+  margin: 0 0 12px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.forfeitActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.forfeitConfirmBtn {
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.forfeitCancelBtn {
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
 .waitingBanner {
   text-align: center;
   margin-top: 20px;

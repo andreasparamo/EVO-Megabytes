@@ -1,53 +1,106 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { get, ref, rtdb } from "@/lib/realtimeDatabase";
 import BattleMatchmaking from "./components/BattleMatchmaking";
+import BattleLobby from "./components/BattleLobby";
 import BattleRace from "./components/BattleRace";
 import RaceResults from "./components/RaceResults";
 import "./battle.css";
 
+const STORAGE_KEY = "battle_session";
+
+function loadSession() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function clearSession() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 export default function BattlePage() {
   const { user } = useAuth();
-  const [gameState, setGameState] = useState("matchmaking"); // matchmaking, countdown, racing, finished
-  const [matchData, setMatchData] = useState(null);
-  const [countdown, setCountdown] = useState(3);
+
+  // Initialise state from localStorage so navigation doesn't reset the battle
+  const [gameState, setGameState] = useState(() => loadSession()?.gameState ?? "matchmaking");
+  const [lobbyId, setLobbyId] = useState(() => loadSession()?.lobbyId ?? null);
+  const [isCreator, setIsCreator] = useState(() => loadSession()?.isCreator ?? false);
+  const [matchData, setMatchData] = useState(() => loadSession()?.matchData ?? null);
+
+  // Validate restored session — if the match/lobby no longer exists in Firebase, reset
+  useEffect(() => {
+    const session = loadSession();
+    if (!session || session.gameState === "matchmaking") return;
+
+    async function validate() {
+      if (session.gameState === "racing" || session.gameState === "finished") {
+        const matchId = session.matchData?.matchId;
+        if (!matchId) { clearSession(); setGameState("matchmaking"); return; }
+        const snap = await get(ref(rtdb, `battle/matches/${matchId}`));
+        if (!snap.exists()) { clearSession(); setGameState("matchmaking"); }
+      } else if (session.gameState === "lobby") {
+        const snap = await get(ref(rtdb, `battle/lobbies/${session.lobbyId}`));
+        if (!snap.exists()) { clearSession(); setGameState("matchmaking"); }
+      }
+    }
+    validate();
+  }, []);
+
+  // Keep localStorage in sync whenever battle state changes
+  useEffect(() => {
+    if (gameState === "matchmaking") {
+      clearSession();
+    } else {
+      saveSession({ gameState, lobbyId, isCreator, matchData });
+    }
+  }, [gameState, lobbyId, isCreator, matchData]);
+
+  const handleLobbyJoined = (id, creator) => {
+    setLobbyId(id);
+    setIsCreator(creator);
+    setGameState("lobby");
+  };
 
   const handleMatchFound = (match) => {
-    console.log("Match found in page:", match);
     setMatchData(match);
-    setGameState("countdown");
-    setCountdown(3);
+    setGameState("racing");
+  };
+
+  const handleLobbyLeft = () => {
+    setLobbyId(null);
+    setIsCreator(false);
+    setGameState("matchmaking");
   };
 
   const handleRaceFinish = (finalMatchData) => {
-    console.log("Race finished:", finalMatchData);
     setMatchData(finalMatchData);
     setGameState("finished");
   };
 
   const handlePlayAgain = () => {
+    clearSession();
     setGameState("matchmaking");
     setMatchData(null);
-    setCountdown(3);
+    setLobbyId(null);
+    setIsCreator(false);
   };
 
   const handleExit = () => {
+    clearSession();
     setGameState("matchmaking");
     setMatchData(null);
-    setCountdown(3);
+    setLobbyId(null);
+    setIsCreator(false);
   };
-
-  // Countdown timer logic
-  useEffect(() => {
-    if (gameState === "countdown" && countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (gameState === "countdown" && countdown === 0) {
-      setGameState("racing");
-    }
-  }, [gameState, countdown]);
 
   if (!user) {
     return (
@@ -76,41 +129,17 @@ export default function BattlePage() {
 
       <div className="battle-arena">
         {gameState === "matchmaking" && (
-          <BattleMatchmaking onMatchFound={handleMatchFound} />
+          <BattleMatchmaking onLobbyJoined={handleLobbyJoined} />
         )}
 
-        {gameState === "countdown" && (
-          <div style={{ textAlign: "center", padding: "40px" }}>
-            <h2
-              style={{
-                fontSize: "2rem",
-                marginBottom: "1rem",
-                color: "var(--text-primary)",
-              }}
-            >
-              Match Found!
-            </h2>
-            <p
-              style={{
-                fontSize: "1.2rem",
-                marginBottom: "2rem",
-                color: "var(--text-secondary)",
-              }}
-            >
-              Opponent: <strong>{matchData?.opponentName}</strong>
-            </p>
-            <div
-              style={{
-                fontSize: "5rem",
-                fontWeight: "bold",
-                color: "var(--accent-1)",
-                marginTop: "40px",
-                animation: "pulse 1s ease-in-out",
-              }}
-            >
-              {countdown > 0 ? countdown : "GO!"}
-            </div>
-          </div>
+        {gameState === "lobby" && (
+          <BattleLobby
+            lobbyId={lobbyId}
+            userId={user.uid}
+            isCreator={isCreator}
+            onMatchFound={handleMatchFound}
+            onLeave={handleLobbyLeft}
+          />
         )}
 
         {gameState === "racing" && matchData && (

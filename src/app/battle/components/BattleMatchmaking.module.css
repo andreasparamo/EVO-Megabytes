@@ -7,16 +7,92 @@
 
 .title {
   font-size: 2rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   color: var(--text-primary);
 }
 
 .subtitle {
-  font-size: 1.1rem;
+  font-size: 1rem;
   margin-bottom: 2rem;
   color: var(--text-secondary);
 }
 
+/* ── Tabs ──────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 2rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tab {
+  padding: 10px 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.activeTab {
+  background-color: var(--accent-1);
+  color: white;
+}
+
+/* ── Selectors ─────────────────────────────────────────────── */
+.selectors {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 2rem;
+}
+
+.selectorGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.selectorLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.select {
+  padding: 10px 16px;
+  font-size: 1rem;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 130px;
+  transition: border-color 0.2s ease;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--accent-1);
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
 .findButton {
   padding: 15px 40px;
   font-size: 1.2rem;
@@ -29,28 +105,86 @@
   transition: all 0.3s ease;
 }
 
-.findButton:hover {
+.findButton:hover:not(:disabled) {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.cancelButton {
-  padding: 12px 32px;
+.findButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Lobby list ────────────────────────────────────────────── */
+.noLobbies {
+  color: var(--text-secondary);
   font-size: 1rem;
+  margin-top: 1rem;
+}
+
+.lobbyList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0.5rem;
+}
+
+.lobbyCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
   background-color: var(--bg-secondary);
-  color: var(--text-primary);
   border: 2px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
+  transition: border-color 0.2s ease;
+}
+
+.lobbyCard:hover {
+  border-color: var(--accent-1);
+}
+
+.lobbyInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.lobbyCreator {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.lobbyMeta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.joinButton {
+  padding: 8px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background-color: var(--accent-1);
+  color: white;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
-  margin-top: 20px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
-.cancelButton:hover {
+.joinButton:hover:not(:disabled) {
   transform: scale(1.05);
-  background-color: var(--card-bg);
 }
 
+.joinButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Spinner (used when searching) ────────────────────────── */
 .loadingContainer {
   display: flex;
   flex-direction: column;
@@ -69,12 +203,8 @@
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .loadingText {

@@ -35,6 +35,62 @@ export const CODE_SNIPPETS = {
       description: "Hello World in C#",
     },
   ],
+  python: [
+    {
+      id: "py-001",
+      code: 'def greet(name):\n    return f"Hello, {name}!"\n\nfor i in range(5):\n    print(greet(f"User {i}"))',
+      difficulty: "easy",
+      description: "Greeting loop in Python",
+    },
+  ],
+  java: [
+    {
+      id: "java-001",
+      code: 'public class Main {\n    public static void main(String[] args) {\n        for (int i = 0; i < 5; i++) {\n            System.out.println("Count: " + i);\n        }\n    }\n}',
+      difficulty: "easy",
+      description: "For loop in Java",
+    },
+  ],
+  javascript: [
+    {
+      id: "js-001",
+      code: 'const nums = [1, 2, 3, 4, 5];\nconst doubled = nums.map(n => n * 2);\nconsole.log(doubled);',
+      difficulty: "easy",
+      description: "Array map in JavaScript",
+    },
+  ],
+  typescript: [
+    {
+      id: "ts-001",
+      code: 'interface User {\n    name: string;\n    age: number;\n}\n\nfunction greet(user: User): string {\n    return `Hello, ${user.name}`;\n}',
+      difficulty: "easy",
+      description: "Interface in TypeScript",
+    },
+  ],
+  go: [
+    {
+      id: "go-001",
+      code: 'package main\n\nimport "fmt"\n\nfunc main() {\n    for i := 0; i < 5; i++ {\n        fmt.Println("Count:", i)\n    }\n}',
+      difficulty: "easy",
+      description: "For loop in Go",
+    },
+  ],
+  rust: [
+    {
+      id: "rs-001",
+      code: 'fn main() {\n    let nums = vec![1, 2, 3, 4, 5];\n    for n in &nums {\n        println!("{}", n);\n    }\n}',
+      difficulty: "easy",
+      description: "Vector loop in Rust",
+    },
+  ],
+  sql: [
+    {
+      id: "sql-001",
+      code: "SELECT users.name, orders.total\nFROM users\nINNER JOIN orders ON users.id = orders.user_id\nWHERE orders.total > 100\nORDER BY orders.total DESC;",
+      difficulty: "medium",
+      description: "JOIN with filter in SQL",
+    },
+  ],
 };
 
 // Get random snippet from a language
