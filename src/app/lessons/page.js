@@ -3,9 +3,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import styles from "./lessons.module.css";
 
 const LESSONS = [
-  //
-  // BEGINNER — CENTRAL CLUSTER / HOME ROW
-  //
   {
     id: "beg-0-hand-placement",
     title: "Keyboard Hand Placement — Beginner",
@@ -49,7 +46,6 @@ const LESSONS = [
     description: "Longer home-row review line for endurance.",
     text: "asdf jkl; asdf jkl; asdf jkl; a s d f j k l ; asdfjkl; asdf jkl; asdf jkl; asdf jkl; a s d f j k l ;"
   },
-
   {
     id: "beg-2-home-row-words-center",
     title: "Home Row Words — Center",
@@ -113,10 +109,6 @@ const LESSONS = [
     description: "Slightly faster central-cluster drills.",
     text: "asdfgh jkl; vb nm asdf jkl; asdf jkl; g h j k n m v b  asdf jkl; asdfgh jkl; nmvb nmvb asdf jkl; nmvb;"
   },
-
-  //
-  // INTERMEDIATE — BRANCHING OUT FROM CENTER
-  //
   {
     id: "int-0-hand-placement",
     title: "Keyboard Hand Placement — Intermediate",
@@ -153,7 +145,6 @@ const LESSONS = [
     description: "Review QWE with mixed spacing and home-row anchors.",
     text: "q w e q w e  qwe weq qwe weq  asdf qwe asdf qwe  qas was eas  we as we as  asdf jkl; q w e qwe;"
   },
-
   {
     id: "int-2-left-branch-zxc",
     title: "Left Branch — ZXC Row",
@@ -245,8 +236,6 @@ const LESSONS = [
     description: "Longer sentences mixing commas, periods, and questions.",
     text: "wait, type slow. then speed up. why rush?  focus, breathe, type.  hands calm, mind sharp.  asdf jkl; , . ?"
   },
-
-  // NEW: INTERMEDIATE CAPS LESSONS
   {
     id: "int-15-caps-home-row",
     title: "Home Row with Capitals",
@@ -275,10 +264,6 @@ const LESSONS = [
     description: "Short sentences that always start with capital letters.",
     text: "This is fine.  Keep Hands Steady.  Watch Your Shift Key.  Type With Calm Focus.  Practice Every Day."
   },
-
-  //
-  // EXPERT — FULL KEYBOARD, CLOSE + REACH
-  //
   {
     id: "exp-0-hand-placement",
     title: "Keyboard Hand Placement — Expert",
@@ -385,8 +370,6 @@ const LESSONS = [
     description: "A long mixed run using the entire board.",
     text: "asdf jkl; zxcvbnm qwertyuiop 1234567890 !@#$%^&*()  The quick brown fox jumps over 24 lazy dogs at 7 pm.  Calm hands, sharp eyes, steady rhythm, constant focus."
   },
-
-  // NEW: EXPERT CAPS LESSONS
   {
     id: "exp-11-caps-speed-bursts",
     title: "Caps Speed Bursts",
@@ -423,33 +406,27 @@ const LESSONS = [
 
 const PAGE_CHARS = 180;
 
-// normalize key ids: letters → lowercase, keep symbols/space as-is
 const normalizeKeyChar = (ch) => {
   if (!ch) return ch;
   if (ch === " ") return " ";
   return /[a-z]/i.test(ch) ? ch.toLowerCase() : ch;
 };
 
-// full finger map (normalized chars)
 const fingerMap = {
-  // left hand
   q: "LP",
   a: "LP",
   z: "LP",
   "1": "LP",
-
   w: "LR",
   s: "LR",
   x: "LR",
   "2": "LR",
   "@": "LR",
-
   e: "LM",
   d: "LM",
   c: "LM",
   "3": "LM",
   "#": "LM",
-
   r: "LI",
   f: "LI",
   v: "LI",
@@ -460,8 +437,6 @@ const fingerMap = {
   b: "LI",
   "5": "LI",
   "%": "LI",
-
-  // right hand
   y: "RI",
   h: "RI",
   n: "RI",
@@ -472,19 +447,16 @@ const fingerMap = {
   m: "RI",
   "7": "RI",
   "&": "RI",
-
   i: "RM",
   k: "RM",
   ",": "RM",
   "8": "RM",
   "*": "RM",
-
   o: "RR",
   l: "RR",
   ".": "RR",
   "9": "RR",
   "(": "RR",
-
   p: "RP",
   ";": "RP",
   ":": "RP",
@@ -492,13 +464,12 @@ const fingerMap = {
   "0": "RP",
   ")": "RP",
   "'": "RP",
-  "’": "RP",
+  "\u2019": "RP",
   '"': "RP",
   "?": "RP",
-  "!": "RP" // keep ! here for shifted /? usage
+  "!": "RP"
 };
 
-// visual keyboard layout; we’ll filter by lesson characters
 const KEY_LAYOUT = [
   ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
   ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
@@ -507,7 +478,6 @@ const KEY_LAYOUT = [
   ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "?", ":", "'", '"']
 ];
 
-// info-only content component
 function HandPlacementContent({ lesson }) {
   if (lesson.level === "Beginner") {
     return (
@@ -541,7 +511,7 @@ function HandPlacementContent({ lesson }) {
           </li>
           <li>
             Always return your fingers to the home row after each reach. That is
-            your “base camp.”
+            your "base camp."
           </li>
         </ul>
       </>
@@ -639,7 +609,7 @@ function HandPlacementContent({ lesson }) {
           stay on <strong>SPACE</strong>.
         </li>
         <li>
-          Even at high speed, always let fingers “snap back” to{" "}
+          Even at high speed, always let fingers "snap back" to{" "}
           <strong>ASDF</strong> and <strong>JKL;</strong> as your default
           position.
         </li>
@@ -648,7 +618,6 @@ function HandPlacementContent({ lesson }) {
   );
 }
 
-// --- grading helpers (accuracy-based) ---
 const GRADE_BANDS = [
   { grade: "A+", min: 98 },
   { grade: "A", min: 95 },
@@ -681,8 +650,6 @@ export default function LessonsPage() {
   const [levelFilter, setLevelFilter] = useState("All");
   const hiddenInputRef = useRef(null);
 
-  // --- completion + grades persistence (per-user profile via localStorage) ---
-  // If you have auth later, replace PROFILE_KEY with a real user id key.
   const PROFILE_KEY = "learntotype:userProfile";
 
   const loadProfile = () => {
@@ -707,7 +674,6 @@ export default function LessonsPage() {
     return new Set(profile?.completedLessons || []);
   }, [profile]);
 
-  // results: { [lessonId]: { last:{acc,wpm,grade,at}, best:{acc,wpm,grade,at} } }
   const resultsByLesson = useMemo(() => {
     return profile?.lessonResults || {};
   }, [profile]);
@@ -771,7 +737,6 @@ export default function LessonsPage() {
   };
 
   const startLesson = useCallback((lesson) => {
-    // info-only lessons: no typing, just show overlay with instructions
     if (lesson.infoOnly) {
       setCurrentLesson({
         lesson,
@@ -922,10 +887,8 @@ export default function LessonsPage() {
 
         L.finished = true;
 
-        // compute final stats now
         const finalStats = calculateStats(L);
 
-        // store recent + best + mark complete (skip info-only lessons)
         if (!L.lesson.infoOnly) {
           recordLessonResult(L.lesson.id, finalStats);
         }
@@ -940,7 +903,6 @@ export default function LessonsPage() {
     [currentLesson, recordLessonResult]
   );
 
-  // focus only for typing lessons
   useEffect(() => {
     if (!overlayVisible || !hiddenInputRef.current) return;
     if (currentLesson?.lesson?.infoOnly) return;
@@ -986,7 +948,6 @@ export default function LessonsPage() {
     }
   }, [currentLesson?.idx]);
 
-  // set of normalized characters used in this lesson (excluding space)
   const lessonChars = useMemo(() => {
     if (!currentLesson || currentLesson.lesson.infoOnly) return new Set();
     const set = new Set();
@@ -1003,9 +964,12 @@ export default function LessonsPage() {
     ? calculateStats(currentLesson)
     : { wpm: 0, acc: 100, prog: 0 };
 
-  const filtered = LESSONS.filter((l) =>
-    levelFilter === "All" ? true : l.level === levelFilter
-  );
+  const filtered = LESSONS.filter((l) => {
+    if (levelFilter === "Completed") {
+      return !l.infoOnly && completedLessons.has(l.id);
+    }
+    return levelFilter === "All" ? true : l.level === levelFilter;
+  });
 
   return (
     <main>
@@ -1053,6 +1017,15 @@ export default function LessonsPage() {
           onClick={() => setLevelFilter("Expert")}
         >
           Expert
+        </button>
+        <button
+          className={[
+            styles["filter-btn"],
+            levelFilter === "Completed" ? styles.active : ""
+          ].join(" ")}
+          onClick={() => setLevelFilter("Completed")}
+        >
+          Completed
         </button>
       </section>
 
