@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useGameScore } from '@/src/hooks/useGameScore';
 
 const BACKGROUND_URL = '/dojo background.jpg';
 
@@ -54,6 +55,9 @@ export default function WordFallGame({ onBack }) {
   const [inputValue, setInputValue] = useState('');
   const [inputError, setInputError] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+
+  // Hook to save game scores to Firestore for the leaderboard
+  const { saveScore } = useGameScore('wordfall');
 
   const gameRef = useRef(null);
   const typeboxRef = useRef(null);
@@ -210,6 +214,11 @@ export default function WordFallGame({ onBack }) {
       audioRef.current.currentTime = 0;
     }
 
+    // Save score to Firestore for the leaderboard
+    if (score > 0) {
+      saveScore(score, { level, difficulty });
+    }
+
     setOverlayContent({
       title: 'Game Over',
       message: `Score ${score}`,
@@ -220,7 +229,7 @@ export default function WordFallGame({ onBack }) {
       }]
     });
     setOverlayVisible(true);
-  }, [score, level]); 
+  }, [score, level, difficulty, saveScore]); 
 
   const resolveOverlaps = useCallback((list) => {
     const alive = list.filter(w => (w.state ?? 'alive') === 'alive');
@@ -512,16 +521,6 @@ export default function WordFallGame({ onBack }) {
       <div className="kj-wrapper">
         <div className="kj-header">
           <div className="kj-meta">
-            <span>
-              Difficulty:{' '}
-              <strong>
-                {difficulty === 'beginner'
-                  ? 'Beginner'
-                  : difficulty === 'intermediate'
-                  ? 'Intermediate'
-                  : 'Expert'}
-              </strong>
-            </span>
           </div>
         </div>
 

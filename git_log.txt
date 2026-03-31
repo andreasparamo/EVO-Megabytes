@@ -1,0 +1,30 @@
+﻿c5230cd Fix bugs in games and add pictures
+110d22c add completed tab to lessons page
+183cd8e Reworked the entire battle features data and work flow. Added a lobby system and integrated Gemini to generate code snippets on the go
+8290123 Merge branch 'main' of https://github.com/andreasparamo/EVO-Megabytes into GamePage
+c980f7e Fix ninja race game
+646cf31 FIX: cleanup user after match, highlights red if worn key pressed, lets the other player complete match
+dbc375b Merge remote changes
+e71a772 Create base for typing ninja racing game
+36d6f3e WIP on ProgressPage: 2356b09 Added best wpm score cards in progress page with real-live data
+1d048fb index on ProgressPage: 2356b09 Added best wpm score cards in progress page with real-live data
+2356b09 Added best wpm score cards in progress page with real-live data
+6958786 Merge branch 'main' of https://github.com/andreasparamo/EVO-Megabytes into TestPage
+7555c7c Merge branch 'main' of https://github.com/andreasparamo/EVO-Megabytes into GamePage
+9952e92 Merge branch 'main' of https://github.com/andreasparamo/EVO-Megabytes into TestPage
+a1917ac Bug fix
+5df528d bug fi
+ace3a0f start making new game
+51e5032 Fix keyword jump
+9287f7c Created a seperate keyboard layout component for reusability and implemented the component in the 1v1 duel feature
+5ae94f5 Merge branch 'main' of https://github.com/andreasparamo/capstone-project
+3c0fee5 Created a seperate keyboard layout component for reusability and implemented the component in the 1v1 duel feature
+e75f2ae bug fix
+e68dc0b Update test.yml file
+9f65956 add test file back
+d2af889 bug fix
+209bb87 clean up test file and sync workflow folder
+2217b25 test file to test the yml file will delete file after
+ce0d48a Add yml file for testing
+4fba65b Merge branch 'main' of https://github.com/andreasparamo/EVO-Megabytes into TestPage
+a062437 chartjs bug fixes to the inaccuracies to wpm counter logic at the  start

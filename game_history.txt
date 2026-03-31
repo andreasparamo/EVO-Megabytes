@@ -1,0 +1,9 @@
+﻿c980f7e Fix ninja race game
+e71a772 Create base for typing ninja racing game
+5df528d bug fi
+ace3a0f start making new game
+51e5032 Fix keyword jump
+1547f3c Fix waterfall game bugs and add animations
+784d18c fix word fal game
+a5143d3 bug fix
+d9a469a separate GamePage into different files

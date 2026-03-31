@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./tests.module.css";
 import ResultsModal from "@/src/components/ResultsModal";
+import { useAuth } from "@/context/AuthContext";
+import { saveTestResult } from "@/lib/progressService";
 
 // Deterministic seed helpers (same on server and client)
 function hashString(str) {
@@ -31,19 +33,20 @@ function generateWords(count, seed) {
 }
 
 const WORD_BANK = [
-  "time","year","people","way","day","man","thing","woman","life","child",
-  "world","school","state","family","student","group","country","problem","hand",
-  "place","case","week","company","system","program","question","work","night","point",
-  "home","water","room","mother","area","money","story","fact","month","lot",
+  "time", "year", "people", "way", "day", "man", "thing", "woman", "life", "child",
+  "world", "school", "state", "family", "student", "group", "country", "problem", "hand",
+  "place", "case", "week", "company", "system", "program", "question", "work", "night", "point",
+  "home", "water", "room", "mother", "area", "money", "story", "fact", "month", "lot",
 ];
 
 const MODES = {
-  Short: 25,
-  Medium: 50,
-  Long: 100,
+  Short: 10,
+  Medium: 25,
+  Long: 50,
 };
 
 export default function TestsPage() {
+  const { user } = useAuth();
   const [mode, setMode] = useState("Short");
 
   // Seed is deterministic for SSR hydration; we vary it later on user actions.
@@ -57,6 +60,7 @@ export default function TestsPage() {
   const [endedAt, setEndedAt] = useState(null);
   const [showResults, setShowResults] = useState(false);
   const [wpmHistory, setWpmHistory] = useState([]);
+  const [isNewBest, setIsNewBest] = useState(false);
 
   const inputRef = useRef(null);
   const containerRef = useRef(null);
@@ -114,10 +118,13 @@ export default function TestsPage() {
     const totalConsidered = correctChars + mistakes;
     const acc = totalConsidered > 0 ? Math.round((correctChars / totalConsidered) * 100) : 100;
 
-    // Calculate WPM based on words completed
-    const minutes = elapsedMs > 0 ? elapsedMs / 60000 : 1;
+    // Standardized WPM: (correctChars + spaces) / 5 — matches the chart formula
     const wordsCompleted = showResults ? words.length : index;
-    const wpm = Math.max(0, Math.round(wordsCompleted / minutes));
+    const spaces = wordsCompleted;
+    const standardizedWordCount = (correctChars + spaces) / 5;
+    const elapsedMin = elapsedMs > 0 ? elapsedMs / 60000 : 1;
+    const safeElapsedMin = Math.max(elapsedMin, 1 / 60);
+    const wpm = Math.max(0, Math.round(standardizedWordCount / safeElapsedMin));
 
     return { wpm, acc, mistakes, elapsedMs };
   }, [inputs, words, startedAt, endedAt, index, showResults]);
@@ -154,18 +161,15 @@ export default function TestsPage() {
 
     if (key === " " || key === "Enter") {
       e.preventDefault();
-      
-      // Record WPM data point on word completion
-      if (startedAt) {
+
+      // Record WPM data point on word completion (skip index 0 — cold-start outlier)
+      if (startedAt && index > 0) {
         const now = Date.now();
         const elapsedMs = now - startedAt;
         const elapsedMin = elapsedMs / 60000;
-        
-        // Calculate WPM based on words completed (index + 1 = words done so far)
-        const wordsCompleted = index + 1;
-        const wpm = elapsedMin > 0 ? Math.round(wordsCompleted / elapsedMin) : 0;
-        
-        // Calculate accuracy based on correct characters
+
+        // Build a snapshot of correct chars using inputs (which is current
+        // because character keystrokes update inputs synchronously before space fires)
         let correctChars = 0;
         let totalChars = 0;
         for (let wi = 0; wi <= index; wi++) {
@@ -177,21 +181,61 @@ export default function TestsPage() {
           }
           totalChars += word.length;
         }
+
+        // Standardized WPM: (correctChars + spaces) / 5 = "standard words"
+        const spaces = index + 1;
+        const standardizedWordCount = (correctChars + spaces) / 5;
+        const safeElapsedMin = Math.max(elapsedMin, 1 / 60);
+        const wpm = Math.round(standardizedWordCount / safeElapsedMin);
         const acc = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
-        
+
         setWpmHistory((prev) => [
           ...prev,
           { time: elapsedMs / 1000, wpm, acc, wordIndex: index }
         ]);
       }
-      
+
       // Move to next word, finalize current
       if (index < words.length - 1) {
         setIndex(index + 1);
       } else {
         // End of test
-        setEndedAt(Date.now());
+        const endTime = Date.now();
+        setEndedAt(endTime);
         setShowResults(true);
+
+        // Save result to Firestore for progress tracking
+        if (user && startedAt) {
+          const elapsedMs = endTime - startedAt;
+          const elapsedMin = Math.max(elapsedMs / 60000, 1 / 60);
+
+          let correctChars = 0;
+          let totalChars = 0;
+          for (let wi = 0; wi < words.length; wi++) {
+            const typed = inputs[wi] ?? "";
+            const word = words[wi];
+            const minLen = Math.min(word.length, typed.length);
+            for (let ci = 0; ci < minLen; ci++) {
+              if (typed[ci] === word[ci]) correctChars++;
+            }
+            totalChars += word.length;
+          }
+          const spaces = words.length;
+          const finalWpm = Math.max(0, Math.round(((correctChars + spaces) / 5) / elapsedMin));
+          const finalAcc = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+
+          saveTestResult(user.uid, {
+            wpm: finalWpm,
+            accuracy: finalAcc,
+            wordCount: words.length,
+            testCompleted: true,
+          }).then((outcome) => {
+            if (outcome.saved && outcome.isNewBest) {
+              setIsNewBest(true);
+              console.log("New personal best!");
+            }
+          });
+        }
       }
       return;
     }
@@ -231,6 +275,7 @@ export default function TestsPage() {
     setEndedAt(null);
     setShowResults(false);
     setWpmHistory([]);
+    setIsNewBest(false);
     requestAnimationFrame(() => focusInput());
   }
 
@@ -335,6 +380,7 @@ export default function TestsPage() {
           stats={stats}
           mode={mode}
           wpmHistory={wpmHistory}
+          isNewBest={isNewBest}
         />
       </section>
     </main>

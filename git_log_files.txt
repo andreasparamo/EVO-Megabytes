@@ -1,0 +1,4 @@
+﻿25881db Live 1v1 duel implementation and section for the game keyboard_jump
+4253aa1 Merged working changes onto LTS base e83cc79f, with new features added
+aacd440 Created the leaderboard page to check the game scores
+ba8561b database setup with profile data

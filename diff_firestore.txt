@@ -1,0 +1,86 @@
+﻿diff --git a/lib/firestoreService.js b/lib/firestoreService.js
+index eba26af..a24d3e8 100644
+--- a/lib/firestoreService.js
++++ b/lib/firestoreService.js
+@@ -208,3 +208,81 @@ export const getAllUsersGameScores = async () => {
+     return { success: false, error: error.message };
+   }
+ };
++
++// Update user settings (save settings object under users/{uid}.settings)
++export const updateUserSettings = async (userId, settings) => {
++  try {
++    const userRef = doc(db, 'users', userId);
++    await updateDoc(userRef, {
++      settings: settings,
++      updatedAt: serverTimestamp()
++    });
++    return { success: true };
++  } catch (error) {
++    // If the user doc doesn't exist yet, fall back to setDoc with merge
++    try {
++      const userRef = doc(db, 'users', userId);
++      await setDoc(userRef, {
++        settings: settings,
++        createdAt: serverTimestamp(),
++        updatedAt: serverTimestamp()
++      }, { merge: true });
++      return { success: true };
++    } catch (err) {
++      console.error('Error updating user settings:', err);
++      return { success: false, error: err.message };
++    }
++  }
++};
++
++// Save battle result and update user stats
++export const saveBattleResult = async (userId, matchData) => {
++  try {
++    const userRef = doc(db, "users", userId);
++    const battlesRef = collection(userRef, "battles");
++
++    // Save battle result to subcollection
++    await setDoc(doc(battlesRef), {
++      matchId: matchData.matchId || null,
++      opponent: matchData.opponentName || "Unknown",
++      opponentId: matchData.opponentId || null,
++      result: matchData.result, // 'win' or 'loss'
++      myWPM: matchData.myWPM || 0,
++      myAccuracy: matchData.myAccuracy || 0,
++      opponentWPM: matchData.opponentWPM || 0,
++      opponentAccuracy: matchData.opponentAccuracy || 0,
++      language: matchData.language || "c",
++      snippet: matchData.snippet || "",
++      timestamp: serverTimestamp(),
++    });
++
++    // Update user stats
++    const userSnap = await getDoc(userRef);
++    if (userSnap.exists()) {
++      const stats = userSnap.data().stats || {};
++      await updateDoc(userRef, {
++        "stats.battlesPlayed": (stats.battlesPlayed || 0) + 1,
++        "stats.battlesWon":
++          matchData.result === "win"
++            ? (stats.battlesWon || 0) + 1
++            : stats.battlesWon || 0,
++        updatedAt: serverTimestamp(),
++      });
++    } else {
++      // Create user document if it doesn't exist
++      await setDoc(userRef, {
++        stats: {
++          battlesPlayed: 1,
++          battlesWon: matchData.result === "win" ? 1 : 0,
++        },
++        createdAt: serverTimestamp(),
++        updatedAt: serverTimestamp(),
++      }, { merge: true });
++    }
++
++    return { success: true };
++  } catch (error) {
++    console.error("Error saving battle result:", error);
++    return { success: false, error: error.message };
++  }
++};
