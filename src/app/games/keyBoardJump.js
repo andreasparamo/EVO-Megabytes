@@ -1,6 +1,7 @@
  'use client';
 
 import { useEffect, useRef } from 'react';
+import { useGameScore } from '@/src/hooks/useGameScore';
 
 const MUSIC_URL =
   'https://codeskulptor-demos.commondatastorage.googleapis.com/descent/background%20music.mp3';
@@ -12,6 +13,15 @@ const FIXED_JUMP_DURATION_MS = 850;
 
 export default function KeyboardJumpGame({ onBack }) {
   const canvasRef = useRef(null);
+
+  // Hook to save game scores to Firestore for the leaderboard
+  const { saveScore } = useGameScore('keyboardjump');
+  const saveScoreRef = useRef(saveScore);
+
+  // Keep the ref in sync with the latest saveScore callback
+  useEffect(() => {
+    saveScoreRef.current = saveScore;
+  }, [saveScore]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -546,6 +556,12 @@ export default function KeyboardJumpGame({ onBack }) {
       summary.isFinal = isFinal;
       summaryData = summary;
       gameState = 'summary';
+
+      // Save score to Firestore when completing a difficulty
+      if (isFinal && score > 0 && saveScoreRef.current) {
+        saveScoreRef.current(score, { level, difficulty: difficultyKey });
+      }
+
       syncOverlay();
       syncStartBtnText();
       pauseAudio();
@@ -565,6 +581,12 @@ export default function KeyboardJumpGame({ onBack }) {
     function endGameLose() {
       gameState = 'gameOver';
       messageText = `Score ${score} · Level ${level}`;
+
+      // Save score to Firestore for the leaderboard
+      if (score > 0 && saveScoreRef.current) {
+        saveScoreRef.current(score, { level, difficulty: difficultyKey });
+      }
+
       syncOverlay();
       syncStartBtnText();
       pauseAudio();
