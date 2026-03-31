@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import styles from "./RaceResults.module.css";
 import { saveBattleResult } from "@/lib/firestoreService";
+import { cleanupMatch } from "@/lib/battleMatchmaking";
 
 export default function RaceResults({
   matchData,
@@ -11,14 +12,20 @@ export default function RaceResults({
 }) {
   const winner = matchData?.gameState?.winner;
   const isWinner = winner === userId;
-  const myStats = matchData?.players?.[userId];
+  const iDidForfeit = matchData?.players?.[userId]?.forfeit === true;
   const opponentId = Object.keys(matchData?.players || {}).find(
     (id) => id !== userId,
   );
+  const opponentForfeited = opponentId && matchData?.players?.[opponentId]?.forfeit === true;
+  const myStats = matchData?.players?.[userId];
   const opponentStats = opponentId ? matchData?.players[opponentId] : null;
 
-  // Save battle result to Firestore when results are displayed
+  // Cleanup queue/match entries and save result when results are displayed
   useEffect(() => {
+    if (matchData?.matchId && userId) {
+      cleanupMatch(matchData.matchId, userId);
+    }
+
     const saveResult = async () => {
       if (matchData && userId) {
         const battleData = {
@@ -51,7 +58,7 @@ export default function RaceResults({
       <h2
         className={`${styles.title} ${isWinner ? styles.winner : styles.loser}`}
       >
-        {isWinner ? "You Won!" : "You Lost"}
+        {isWinner ? (opponentForfeited ? "You Won! (Forfeit)" : "You Won!") : (iDidForfeit ? "You Forfeited" : "You Lost")}
       </h2>
 
       <div className={styles.statsGrid}>

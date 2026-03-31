@@ -4,6 +4,7 @@ import {
   listenToMatchUpdates,
   updatePlayerProgress,
   markPlayerFinished,
+  forfeitMatch,
 } from "@/lib/battleMatchmaking";
 import OpponentProgress from "./OpponentProgress";
 import styles from "./BattleRace.module.css";
@@ -18,8 +19,12 @@ export default function BattleRace({ matchId, userId, onFinish }) {
   const [correctChars, setCorrectChars] = useState(0);
   const [wrongChars, setWrongChars] = useState(0);
   const [startedAt, setStartedAt] = useState(null);
+  const [myFinished, setMyFinished] = useState(false); // true once the current player completes the snippet
+  const [charResults, setCharResults] = useState([]); // true = correct, false = wrong, per typed character
   const [activeKeys, setActiveKeys] = useState(new Set()); // tracks which key is highlighted as "next to press"
   const [keyFlash, setKeyFlash] = useState({ key: null, type: null }); // drives the green/red flash on each keypress
+  const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const inputRef = useRef(null);
 
   const snippet = matchData?.gameState?.snippet?.code || "";
@@ -32,12 +37,18 @@ export default function BattleRace({ matchId, userId, onFinish }) {
   useEffect(() => {
     if (!matchId) return;
 
-    const unsubscribe = listenToMatchUpdates(matchId, (data) => {
-      setMatchData(data);
-      if (data.gameState.winner && data.gameState.winner !== userId) {
-        setTimeout(() => onFinish(data), 1000);
-      }
-    });
+    const unsubscribe = listenToMatchUpdates(
+      matchId,
+      (data) => {
+        setMatchData(data);
+        const allFinished =
+          data.players && Object.values(data.players).every((p) => p.finished);
+        if (allFinished) {
+          setTimeout(() => onFinish(data), 1000);
+        }
+      },
+      (error) => setLoadError(error.message),
+    );
 
     return () => unsubscribe();
   }, [matchId, userId, onFinish]);
@@ -80,6 +91,8 @@ export default function BattleRace({ matchId, userId, onFinish }) {
 
   // Handle typing
   const handleKeyDown = (e) => {
+    if (myFinished) return;
+
     const key = e.key;
 
     if (
@@ -95,36 +108,47 @@ export default function BattleRace({ matchId, userId, onFinish }) {
     if (key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       const expected = snippet[currentIndex];
-      if (key === expected) {
+      const isCorrect = key === expected;
+
+      if (isCorrect) {
         setCorrectChars((prev) => prev + 1);
       } else {
         setWrongChars((prev) => prev + 1);
       }
 
+      setCharResults((prev) => [...prev, isCorrect]);
+
       // Flash the expected key green (correct) or red (wrong) for 150 ms
-      const norm = normalizeKeyChar(expected); // normalize the expected char to match keyboard key ids
-      setKeyFlash({ key: norm, type: key === expected ? "correct" : "wrong" }); // trigger the flash colour
-      setTimeout(() => setKeyFlash({ key: null, type: null }), 150); // clear flash after 150 ms
+      const norm = normalizeKeyChar(expected);
+      setKeyFlash({ key: norm, type: isCorrect ? "correct" : "wrong" });
+      setTimeout(() => setKeyFlash({ key: null, type: null }), 150);
 
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
 
       if (nextIndex >= snippet.length) {
         markPlayerFinished(matchId, userId);
-        setTimeout(() => onFinish(matchData), 1000);
+        setMyFinished(true); // show "waiting for opponent" — listener handles redirect when both are done
       }
     }
 
     if (key === "Backspace" && currentIndex > 0) {
       e.preventDefault();
       setCurrentIndex((prev) => prev - 1);
+      setCharResults((prev) => prev.slice(0, -1));
     }
+  };
+
+  const handleForfeit = async () => {
+    await forfeitMatch(matchId, userId);
+    // listenToMatchUpdates will detect allFinished and call onFinish for both players
   };
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  if (loadError) return <div>Failed to load match: {loadError}</div>;
   if (!snippet) return <div>Loading race...</div>;
 
   return (
@@ -160,7 +184,11 @@ export default function BattleRace({ matchId, userId, onFinish }) {
             const isCursor = i === currentIndex;
 
             let className = styles.char;
-            if (isTyped) className += ` ${styles.typed}`;
+            if (isTyped) {
+              className += charResults[i]
+                ? ` ${styles.typed}`
+                : ` ${styles.wrong}`;
+            }
             if (isCursor) className += ` ${styles.cursor}`;
 
             return (
@@ -187,7 +215,39 @@ export default function BattleRace({ matchId, userId, onFinish }) {
         lessonChars={null} // null = render all keys; pass a Set to filter to snippet chars only
       />
 
-      <p className={styles.hint}>Click anywhere to focus and start typing!</p>
+      {myFinished && (
+        <div className={styles.waitingBanner}>
+          You finished! Waiting for opponent to complete...
+        </div>
+      )}
+
+      {!myFinished && (
+        <p className={styles.hint}>Click anywhere to focus and start typing!</p>
+      )}
+
+      {!showForfeitConfirm ? (
+        <button
+          className={styles.forfeitButton}
+          onClick={() => setShowForfeitConfirm(true)}
+        >
+          Leave Game
+        </button>
+      ) : (
+        <div className={styles.forfeitConfirm}>
+          <p>Forfeit the match? Your opponent will be declared the winner.</p>
+          <div className={styles.forfeitActions}>
+            <button className={styles.forfeitConfirmBtn} onClick={handleForfeit}>
+              Yes, Forfeit
+            </button>
+            <button
+              className={styles.forfeitCancelBtn}
+              onClick={() => setShowForfeitConfirm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
