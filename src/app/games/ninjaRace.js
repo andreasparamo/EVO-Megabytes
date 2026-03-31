@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useGameScore } from '@/src/hooks/useGameScore';
 
 const BACKGROUND_URL = '/track.png'; 
 const MUSIC_URL = 'https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/race1.ogg';
@@ -16,6 +17,9 @@ const difficultyConfigs = {
 const MAX_QUOTE_LEN = 250;
 
 export default function NinjaRaceGame({ onBack }) {
+  // Hook to save game scores to Firestore for the leaderboard
+  const { saveScore } = useGameScore('ninjarace');
+
   const [gameState, setGameState] = useState('menu'); 
   const [difficulty, setDifficulty] = useState('beginner');
   const [customWpm, setCustomWpm] = useState(50);
@@ -283,6 +287,11 @@ export default function NinjaRaceGame({ onBack }) {
 
     setStats({ wpm, accuracy, status, won: isWin });
     setGameState('summary');
+
+    // Save score to Firestore for the leaderboard
+    if (wpm > 0) {
+      saveScore(wpm, { accuracy, difficulty, won: isWin });
+    }
   };
 
   const userProgress = quote.length > 0 ? (userInput.length / quote.length) * 100 : 0;
