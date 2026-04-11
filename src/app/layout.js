@@ -17,7 +17,29 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Press+Start+2P&display=swap" rel="stylesheet" />
       </head>
-      <body>
+      <body suppressHydrationWarning>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var local = localStorage.getItem('ltt_settings');
+                  var theme = null;
+                  if (local) {
+                    theme = JSON.parse(local).theme;
+                  }
+                  if (!theme || theme === 'auto') {
+                    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    document.body.classList.add(prefersDark ? 'theme-dark' : 'theme-light');
+                    document.body.classList.add('theme-auto');
+                  } else {
+                    document.body.classList.add('theme-' + theme);
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
         <AuthProvider>
           <ThemeInitializer />
           <ProtectedRoute>
