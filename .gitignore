@@ -34,9 +34,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# Deployment guide (contains API keys)
-Deployment_Guide.md
-Project_Deployment_Artifacts.md
+# Deployment artifacts (contains API keys and sensitive config)
+deployment-artifacts/
 
 # vercel
 .vercel
