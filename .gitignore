@@ -36,6 +36,7 @@ yarn-error.log*
 
 # Deployment guide (contains API keys)
 Deployment_Guide.md
+Project_Deployment_Artifacts.md
 
 # vercel
 .vercel
