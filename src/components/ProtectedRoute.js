@@ -16,7 +16,8 @@ export default function ProtectedRoute({ children }) {
     }
     // If user is logged in and on login page, redirect to landing page
     if (!loading && user && pathname === "/") {
-      router.push("/landingPage");
+      // Force a hard refresh to ensure layout scripts and themes apply properly without React hydration conflicts
+      window.location.href = "/landingPage";
     }
   }, [user, loading, router, pathname]);
 

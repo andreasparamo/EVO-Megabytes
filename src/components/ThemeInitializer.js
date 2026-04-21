@@ -3,9 +3,11 @@ import { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getUserProfile } from "@/lib/firestoreService";
 import AudioManager from "@/lib/audio";
+import { usePathname } from "next/navigation";
 
 export default function ThemeInitializer() {
   const { user } = useAuth();
+  const pathname = usePathname();
 
   const applyThemeClass = (theme) => {
     if (typeof document === 'undefined') return;
@@ -27,24 +29,34 @@ export default function ThemeInitializer() {
     let mounted = true;
 
     const load = async () => {
+      let localThemeApplied = false;
       try {
         const local = localStorage.getItem('ltt_settings');
         if (local) {
           const parsed = JSON.parse(local);
           if (parsed && parsed.theme) {
             applyThemeClass(parsed.theme);
+            localThemeApplied = true;
           }
         }
       } catch (e) {
         // ignore
       }
 
+      if (!localThemeApplied) {
+        applyThemeClass('dark');
+      }
+
       if (user && user.uid) {
         try {
           const res = await getUserProfile(user.uid);
-          if (!mounted) return;
-          if (res.success && res.data && res.data.settings && res.data.settings.theme) {
-            applyThemeClass(res.data.settings.theme);
+          if (res.success && res.data && res.data.settings) {
+            if (res.data.settings.theme) {
+              applyThemeClass(res.data.settings.theme);
+            }
+            try {
+              localStorage.setItem('ltt_settings', JSON.stringify(res.data.settings));
+            } catch (e) {}
           }
         } catch (err) {
           // ignore
@@ -79,11 +91,38 @@ export default function ThemeInitializer() {
 
     document.addEventListener('keydown', onKeyDown, { passive: true });
 
+    // Enforce theme class on body to prevent Next.js from stripping it during route transitions
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === 'class') {
+          const hasTheme = Array.from(document.body.classList).some(c => c.startsWith('theme-'));
+          if (!hasTheme) {
+            try {
+              const local = localStorage.getItem('ltt_settings');
+              if (local) {
+                const parsed = JSON.parse(local);
+                if (parsed && parsed.theme) {
+                  applyThemeClass(parsed.theme);
+                  return;
+                }
+              }
+            } catch (e) {}
+            applyThemeClass('dark');
+          }
+        }
+      }
+    });
+    
+    if (typeof document !== 'undefined') {
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    }
+
     return () => {
       mounted = false;
       try { document.removeEventListener('keydown', onKeyDown); } catch (e) {}
+      observer.disconnect();
     };
-  }, [user]);
+  }, [user, pathname]);
 
   return null;
 }

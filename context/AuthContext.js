@@ -77,9 +77,18 @@ const loginWithGoogle = async () => {
     return userCredential;
 };
 
-const logout = () =>{
+const logout = () => {
+    try {
+        localStorage.removeItem('ltt_settings');
+        if (typeof document !== 'undefined') {
+            Array.from(document.body.classList).forEach((c) => {
+                if (c.startsWith('theme-')) document.body.classList.remove(c);
+            });
+            document.body.classList.add('theme-dark');
+        }
+    } catch (e) {}
     return signOut(auth);
-}
+};
 
 const value = {
     user,
