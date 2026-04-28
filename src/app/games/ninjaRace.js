@@ -212,7 +212,11 @@ export default function NinjaRaceGame({ onBack }) {
     const val = e.target.value;
     
     if (val.length < userInput.length) {
-      return; 
+      setUserInput(val);
+      typedLenRef.current = val.length;
+      correctCharsRef.current = val.length;
+      setHasError(false);
+      return;
     }
 
     const newChars = val.slice(userInput.length);

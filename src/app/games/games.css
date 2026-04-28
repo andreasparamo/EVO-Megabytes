@@ -507,7 +507,7 @@ button.primary {
 }
 
 .quote-display {
-  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-family: inherit;
   font-size: 1.35rem;
   line-height: 1.7;
   color: #636369;

@@ -95,20 +95,23 @@ export default function BattleRace({ matchId, userId, onFinish }) {
 
     const key = e.key;
 
-    if (
-      !startedAt &&
-      key.length === 1 &&
-      !e.ctrlKey &&
-      !e.metaKey &&
-      !e.altKey
-    ) {
+    // don't let tab jump to the next focusable element mid-race
+    if (key === "Tab") {
+      e.preventDefault();
+    }
+
+    const isTypableKey =
+      (key.length === 1 || key === "Tab") && !e.ctrlKey && !e.metaKey && !e.altKey;
+    const typedChar = key === "Tab" ? "\t" : key;
+
+    if (!startedAt && isTypableKey) {
       setStartedAt(Date.now());
     }
 
-    if (key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (isTypableKey) {
       e.preventDefault();
       const expected = snippet[currentIndex];
-      const isCorrect = key === expected;
+      const isCorrect = typedChar === expected;
 
       if (isCorrect) {
         setCorrectChars((prev) => prev + 1);

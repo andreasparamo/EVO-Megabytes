@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 import { get, ref, rtdb } from "@/lib/realtimeDatabase";
 import BattleMatchmaking from "./components/BattleMatchmaking";
 import BattleLobby from "./components/BattleLobby";
@@ -29,12 +30,20 @@ function clearSession() {
 
 export default function BattlePage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const [gameMode, setGameMode] = useState(null); // null = selection, "battle" = code battle
 
   // Initialise state from localStorage so navigation doesn't reset the battle
-  const [gameState, setGameState] = useState(() => loadSession()?.gameState ?? "matchmaking");
+  const [gameState, setGameState] = useState(
+    () => loadSession()?.gameState ?? "matchmaking",
+  );
   const [lobbyId, setLobbyId] = useState(() => loadSession()?.lobbyId ?? null);
-  const [isCreator, setIsCreator] = useState(() => loadSession()?.isCreator ?? false);
-  const [matchData, setMatchData] = useState(() => loadSession()?.matchData ?? null);
+  const [isCreator, setIsCreator] = useState(
+    () => loadSession()?.isCreator ?? false,
+  );
+  const [matchData, setMatchData] = useState(
+    () => loadSession()?.matchData ?? null,
+  );
 
   // Validate restored session — if the match/lobby no longer exists in Firebase, reset
   useEffect(() => {
@@ -44,12 +53,22 @@ export default function BattlePage() {
     async function validate() {
       if (session.gameState === "racing" || session.gameState === "finished") {
         const matchId = session.matchData?.matchId;
-        if (!matchId) { clearSession(); setGameState("matchmaking"); return; }
+        if (!matchId) {
+          clearSession();
+          setGameState("matchmaking");
+          return;
+        }
         const snap = await get(ref(rtdb, `battle/matches/${matchId}`));
-        if (!snap.exists()) { clearSession(); setGameState("matchmaking"); }
+        if (!snap.exists()) {
+          clearSession();
+          setGameState("matchmaking");
+        }
       } else if (session.gameState === "lobby") {
         const snap = await get(ref(rtdb, `battle/lobbies/${session.lobbyId}`));
-        if (!snap.exists()) { clearSession(); setGameState("matchmaking"); }
+        if (!snap.exists()) {
+          clearSession();
+          setGameState("matchmaking");
+        }
       }
     }
     validate();
@@ -92,6 +111,7 @@ export default function BattlePage() {
     setMatchData(null);
     setLobbyId(null);
     setIsCreator(false);
+    // Stay in "battle" mode so they go straight back to matchmaking
   };
 
   const handleExit = () => {
@@ -100,6 +120,7 @@ export default function BattlePage() {
     setMatchData(null);
     setLobbyId(null);
     setIsCreator(false);
+    setGameMode(null); // Back to game selection
   };
 
   if (!user) {
@@ -110,10 +131,8 @@ export default function BattlePage() {
           <p className="muted">Challenge players in real-time typing races</p>
         </div>
         <div className="battle-arena">
-          <div style={{ textAlign: "center", padding: "40px" }}>
-            <p style={{ fontSize: "1.2rem", color: "var(--text-secondary)" }}>
-              Please log in to participate in battles
-            </p>
+          <div className="battle-login-prompt">
+            <p>Please log in to participate in battles</p>
           </div>
         </div>
       </main>
@@ -128,11 +147,64 @@ export default function BattlePage() {
       </div>
 
       <div className="battle-arena">
-        {gameState === "matchmaking" && (
+        {gameMode === null && (
+          <div className="game-select-grid">
+            <button
+              className="game-select-card"
+              onClick={() => setGameMode("battle")}
+            >
+              <div className="game-select-thumb">
+                <img
+                  src="/code_battle.png"
+                  alt="Code Battle"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextSibling.style.display = "flex";
+                  }}
+                />
+                <div className="game-select-thumb-fallback">
+                  <span>🖼️</span>
+                  <span>Add image</span>
+                </div>
+              </div>
+              <div className="game-select-info">
+                <h3>Code Battle</h3>
+                <p>Race to type a code snippet</p>
+              </div>
+            </button>
+
+            <button
+              className="game-select-card"
+              onClick={() => router.push("/ninjarace-multiplayer")}
+            >
+              <div className="game-select-thumb">
+                {/* Replace src with your Ninja Race image */}
+                <img
+                  src="/racetrack.jpg"
+                  alt="Ninja Race"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextSibling.style.display = "flex";
+                  }}
+                />
+                <div className="game-select-thumb-fallback">
+                  <span>🖼️</span>
+                  <span>Add image</span>
+                </div>
+              </div>
+              <div className="game-select-info">
+                <h3>Ninja Race</h3>
+                <p>Race to type a random quote</p>
+              </div>
+            </button>
+          </div>
+        )}
+
+        {gameMode === "battle" && gameState === "matchmaking" && (
           <BattleMatchmaking onLobbyJoined={handleLobbyJoined} />
         )}
 
-        {gameState === "lobby" && (
+        {gameMode === "battle" && gameState === "lobby" && (
           <BattleLobby
             lobbyId={lobbyId}
             userId={user.uid}
@@ -142,7 +214,7 @@ export default function BattlePage() {
           />
         )}
 
-        {gameState === "racing" && matchData && (
+        {gameMode === "battle" && gameState === "racing" && matchData && (
           <BattleRace
             matchId={matchData.matchId}
             userId={user.uid}
@@ -150,7 +222,7 @@ export default function BattlePage() {
           />
         )}
 
-        {gameState === "finished" && matchData && (
+        {gameMode === "battle" && gameState === "finished" && matchData && (
           <RaceResults
             matchData={matchData}
             userId={user.uid}
