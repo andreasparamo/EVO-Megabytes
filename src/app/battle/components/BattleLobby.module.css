@@ -128,19 +128,19 @@
 .startButton {
   padding: 14px 48px;
   font-size: 1.1rem;
-  font-weight: bold;
-  background-color: var(--accent-1);
-  color: white;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: var(--on-accent, #fff);
   border: none;
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform .15s ease, box-shadow .15s ease;
   width: 100%;
 }
 
 .startButton:hover:not(:disabled) {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(var(--accent-1-rgb), .25);
 }
 
 .startButton:disabled {

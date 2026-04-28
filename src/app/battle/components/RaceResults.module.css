@@ -62,19 +62,21 @@
 .button {
   padding: 12px 32px;
   font-size: 1.1rem;
+  font-weight: 700;
   border: none;
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  transition: all 0.3s ease;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: var(--on-accent, #fff);
+  transition: transform .15s ease, box-shadow .15s ease;
 }
 
 .button:hover {
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(var(--accent-1-rgb), .25);
 }
 
 .primaryButton {
-  background-color: var(--accent-1);
-  color: white;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: var(--on-accent, #fff);
 }

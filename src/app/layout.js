@@ -2,6 +2,7 @@ import "./globals.css";
 import { AuthProvider } from "../../context/AuthContext";
 import ProtectedRoute from "@/src/components/ProtectedRoute";
 import ThemeInitializer from "@/src/components/ThemeInitializer";
+import ButtonHoverSound from "@/src/components/ButtonHoverSound";
 
 export const metadata = {
   title: "LearnToType - Master Your Typing Skills",
@@ -42,7 +43,8 @@ export default function RootLayout({ children }) {
         />
         <AuthProvider>
           <ThemeInitializer />
-          <ProtectedRoute>
+          <ButtonHoverSound />
+<ProtectedRoute>
             {children}
           </ProtectedRoute>
         </AuthProvider>

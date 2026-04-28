@@ -165,9 +165,6 @@ export async function generateMultipleSnippets(
     const snippet = await generateCodeSnippets(language, difficulty);
     if (snippet) {
       snippets.push(snippet);
-      console.log(
-        `Generated ${language} ${difficulty} snippet ${i + 1}/${count}`,
-      );
     }
     await new Promise((resolve) => setTimeout(resolve, 500)); //setting a timer to immitate users
   }
